@@ -32,6 +32,15 @@ class ExtractionResult(BaseModel):
     extraction: ClinicalExtraction
 
 
+class SynthesisReport(BaseModel):
+    """Final weighted clinical synthesis across extracted studies."""
+
+    clinical_consensus: str
+    conflicting_findings: list[str] = Field(default_factory=list)
+    overall_evidence_quality: str
+    clinical_recommendation: str
+
+
 class AgentMessage(BaseModel):
     """A message passed between agents."""
 
@@ -41,6 +50,7 @@ class AgentMessage(BaseModel):
     metadata: dict[str, str] = Field(default_factory=dict)
     citations: list[Citation] = Field(default_factory=list)
     extractions: list[ExtractionResult] = Field(default_factory=list)
+    synthesis: SynthesisReport | None = None
 
 
 class PICOQuery(BaseModel):
