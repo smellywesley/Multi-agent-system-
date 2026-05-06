@@ -18,7 +18,6 @@ class PubMedClient:
     timeout_seconds: float = 20.0
 
     def search(self, query: str, max_results: int = 20) -> list[Citation]:
-        """Return structured citations for a PubMed query."""
         pmids = self._esearch(query=query, max_results=max_results)
         if not pmids:
             return []
@@ -28,12 +27,7 @@ class PubMedClient:
         with httpx.Client(timeout=self.timeout_seconds) as client:
             response = client.get(
                 f"{self.base_url}/esearch.fcgi",
-                params={
-                    "db": "pubmed",
-                    "retmode": "json",
-                    "retmax": max_results,
-                    "term": query,
-                },
+                params={"db": "pubmed", "retmode": "json", "retmax": max_results, "term": query},
             )
             response.raise_for_status()
         payload = response.json()
@@ -43,11 +37,7 @@ class PubMedClient:
         with httpx.Client(timeout=self.timeout_seconds) as client:
             response = client.get(
                 f"{self.base_url}/efetch.fcgi",
-                params={
-                    "db": "pubmed",
-                    "retmode": "xml",
-                    "id": ",".join(pmids),
-                },
+                params={"db": "pubmed", "retmode": "xml", "id": ",".join(pmids)},
             )
             response.raise_for_status()
 
@@ -65,10 +55,10 @@ class PubMedClient:
             abstract = " ".join(abstract_segments).strip()
             authors = self._authors(article)
             doi = self._doi(article)
-
             citations.append(
                 Citation(
-                    pmid=pmid,
+                    source="PubMed",
+                    pmid=pmid or None,
                     title=title,
                     abstract=abstract,
                     authors=authors,
@@ -90,13 +80,10 @@ class PubMedClient:
             last_name = self._text(author.find("LastName"))
             initials = self._text(author.find("Initials"))
             collective = self._text(author.find("CollectiveName"))
-
             if collective:
                 names.append(collective)
             elif last_name:
-                formatted = f"{last_name} {initials}".strip()
-                names.append(formatted)
-
+                names.append(f"{last_name} {initials}".strip())
         return names
 
     def _doi(self, article: ET.Element) -> str | None:
