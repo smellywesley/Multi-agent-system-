@@ -1,5 +1,7 @@
 """Extraction specialist agent."""
 
+import time
+
 from multi_agent_system.agents.base import BaseAgent
 from multi_agent_system.config import get_settings
 from multi_agent_system.schemas.messages import AgentMessage, ClinicalExtraction, ExtractionResult
@@ -34,6 +36,7 @@ class ExtractorAgent(BaseAgent):
             extractions.append(
                 ExtractionResult(doi=citation.doi, pmid=citation.pmid, extraction=extraction)
             )
+            time.sleep(2)
 
         return AgentMessage(
             sender=self.name,
