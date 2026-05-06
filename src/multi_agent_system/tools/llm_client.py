@@ -1,8 +1,9 @@
-"""OpenAI-backed LLM client."""
+"""Google Gemini-backed LLM client."""
 
-from typing import TypeVar
+from typing import TypeVar, cast
 
-from openai import OpenAI
+from google import genai
+from google.genai import types
 from pydantic import BaseModel
 
 from multi_agent_system.config import Settings
@@ -11,20 +12,23 @@ TModel = TypeVar("TModel", bound=BaseModel)
 
 
 class LLMClient:
-    """Thin wrapper around OpenAI SDK with schema-constrained output parsing."""
+    """Wrapper around Google GenAI SDK with schema-constrained output parsing."""
 
     def __init__(self, settings: Settings) -> None:
         self.model = settings.llm_model
-        self.client = OpenAI(api_key=settings.openai_api_key)
+        self.client = genai.Client(api_key=settings.gemini_api_key)
 
     def generate_structured(self, prompt: str, schema: type[TModel]) -> TModel:
         """Generate and parse structured output into the provided Pydantic schema."""
-        response = self.client.responses.parse(
+        response = self.client.models.generate_content(
             model=self.model,
-            input=[
-                {"role": "system", "content": "Return only valid structured output."},
-                {"role": "user", "content": prompt},
-            ],
-            text_format=schema,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=schema,
+            ),
         )
-        return response.output_parsed
+        parsed = response.parsed
+        if parsed is None:
+            raise ValueError("Gemini returned no parsed structured response")
+        return cast(TModel, parsed)
