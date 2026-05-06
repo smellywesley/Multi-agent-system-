@@ -4,7 +4,7 @@ from typing import Any, TypeVar, cast
 
 from google import genai
 from google.genai import types
-from openai import OpenAI
+from openai import InternalServerError, OpenAI, RateLimitError
 from pydantic import BaseModel
 
 from multi_agent_system.config import Settings
@@ -16,6 +16,7 @@ class LLMClient:
     """Switchboard client for Gemini and OpenAI-compatible providers."""
 
     def __init__(self, settings: Settings) -> None:
+        self.settings = settings
         self.model = settings.llm_model
         self.provider = settings.llm_provider.strip().lower()
 
@@ -58,13 +59,33 @@ class LLMClient:
         if self.openai_client is None:
             raise ValueError("OpenAI-compatible client was not initialized")
 
-        completion = self.openai_client.beta.chat.completions.parse(
-            model=self.model,
-            messages=[{"role": "user", "content": prompt}],
-            response_format=schema,
-        )
-        message: Any = completion.choices[0].message
-        parsed = message.parsed
-        if parsed is None:
-            raise ValueError("Provider returned no parsed structured response")
-        return cast(TModel, parsed)
+        try:
+            completion = self.openai_client.beta.chat.completions.parse(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                response_format=schema,
+            )
+            message: Any = completion.choices[0].message
+            parsed = message.parsed
+            if parsed is None:
+                raise ValueError("Provider returned no parsed structured response")
+            return cast(TModel, parsed)
+        except (RateLimitError, InternalServerError):
+            if self.provider != "sambanova":
+                raise
+            print("SambaNova rate limit hit, falling back to Gemini...")
+            fallback_client = genai.Client(api_key=self.settings.gemini_api_key)
+            response = fallback_client.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=schema,
+                ),
+            )
+            parsed = response.parsed
+            if parsed is None:
+                raise ValueError(
+                    "Gemini fallback returned no parsed structured response",
+                ) from None
+            return cast(TModel, parsed)
