@@ -20,10 +20,15 @@ class ResearcherAgent(BaseAgent):
 
     def handle(self, message: AgentMessage) -> AgentMessage:
         pubmed = self.pubmed_client.search(query=message.content, max_results=20)
-        semantic_scholar = self.semantic_scholar_client.search(
-            query=message.content,
-            max_results=20,
-        )
+
+        try:
+            semantic_scholar = self.semantic_scholar_client.search(
+                query=message.content,
+                max_results=20,
+            )
+        except Exception:
+            semantic_scholar = []
+
         citations = self._deduplicate(pubmed + semantic_scholar)
 
         return AgentMessage(
