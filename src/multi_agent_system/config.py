@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     llm_model: str = Field(default="gemini-1.5-pro", alias="LLM_MODEL")
     gemini_api_key: str = Field(default="replace_me", alias="GEMINI_API_KEY")
     sambanova_api_key: str = Field(default="replace_me", alias="SAMBANOVA_API_KEY")
+    internal_api_secret: str = Field(default="replace_me", alias="INTERNAL_API_SECRET")
     openai_base_url: str = Field(
         default="https://api.sambanova.ai/v1",
         alias="OPENAI_BASE_URL",
