@@ -21,11 +21,12 @@ st.markdown("""
 st.title("🧬 NEURAL CLINICAL INTELLIGENCE")
 st.caption("MAY 2026 RELEASE // GROQ-POWERED STACK")
 
-with st.sidebar:
-    st.header("⚡ CORE STATUS")
-    st.success("GROQ: Llama 3.3 70B [PRIMARY]")
-    st.success("SAMBANOVA: Llama 3.3 [BACKUP]")
-    st.info("GEMINI: DISABLED (RETIRED)")
+with st.status("🧬 INITIATING MULTI-AGENT PROTOCOL...", expanded=True) as status:
+    st.write("--- Orchestrating Central Intelligence...")
+    st.write("--- Scanning Global Literature (PubMed/Scholar)...")
+    st.write("--- Extracting Data (Applying Rate-Limit Throttling)...") # Added this
+            
+    result = workflow.run(task=question)
 
 question = st.text_area("INPUT RESEARCH QUERY:", placeholder="Enter clinical question...", height=150)
 
