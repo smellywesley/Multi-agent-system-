@@ -1,5 +1,4 @@
 """PubMed E-utilities client."""
-
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
@@ -9,16 +8,16 @@ import httpx
 
 from multi_agent_system.schemas.messages import Citation
 
-
 @dataclass
 class PubMedClient:
     """Client for PubMed ESearch + EFetch operations."""
-
     base_url: str = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
     timeout_seconds: float = 20.0
 
-    def search(self, query: str, max_results: int = 20) -> list[Citation]:
-        pmids = self._esearch(query=query, max_results=max_results)
+    def search(self, query: str, max_results: int = 3) -> list[Citation]:
+        # FREE TIER PROTECTOR: Hard cap at 3 papers to prevent API Rate Limits
+        safe_max = min(max_results, 3)
+        pmids = self._esearch(query=query, max_results=safe_max)
         if not pmids:
             return []
         return self._efetch(pmids)
@@ -27,46 +26,57 @@ class PubMedClient:
         with httpx.Client(timeout=self.timeout_seconds) as client:
             response = client.get(
                 f"{self.base_url}/esearch.fcgi",
-                params={"db": "pubmed", "retmode": "json", "retmax": max_results, "term": query},
+                params={
+                    "db": "pubmed",
+                    "retmode": "json",
+                    "retmax": max_results,
+                    "term": query
+                },
             )
             response.raise_for_status()
-        payload = response.json()
-        return payload.get("esearchresult", {}).get("idlist", [])
+            payload = response.json()
+            return payload.get("esearchresult", {}).get("idlist", [])
 
     def _efetch(self, pmids: list[str]) -> list[Citation]:
         with httpx.Client(timeout=self.timeout_seconds) as client:
             response = client.get(
                 f"{self.base_url}/efetch.fcgi",
-                params={"db": "pubmed", "retmode": "xml", "id": ",".join(pmids)},
+                params={
+                    "db": "pubmed",
+                    "retmode": "xml",
+                    "id": ",".join(pmids)
+                },
             )
             response.raise_for_status()
-
-        root = ET.fromstring(response.text)
-        citations: list[Citation] = []
-
-        for article in root.findall(".//PubmedArticle"):
-            pmid = self._text(article.find(".//PMID"))
-            title = self._text(article.find(".//ArticleTitle"))
-            abstract_segments = [
-                self._text(node)
-                for node in article.findall(".//Abstract/AbstractText")
-                if self._text(node)
-            ]
-            abstract = " ".join(abstract_segments).strip()
-            authors = self._authors(article)
-            doi = self._doi(article)
-            citations.append(
-                Citation(
-                    source="PubMed",
-                    pmid=pmid or None,
-                    title=title,
-                    abstract=abstract,
-                    authors=authors,
-                    doi=doi,
+            
+            root = ET.fromstring(response.text)
+            citations: list[Citation] = []
+            
+            for article in root.findall(".//PubmedArticle"):
+                pmid = self._text(article.find(".//PMID"))
+                title = self._text(article.find(".//ArticleTitle"))
+                
+                abstract_segments = [
+                    self._text(node)
+                    for node in article.findall(".//Abstract/AbstractText")
+                    if self._text(node)
+                ]
+                abstract = " ".join(abstract_segments).strip()
+                
+                authors = self._authors(article)
+                doi = self._doi(article)
+                
+                citations.append(
+                    Citation(
+                        source="PubMed",
+                        pmid=pmid or None,
+                        title=title,
+                        abstract=abstract,
+                        authors=authors,
+                        doi=doi,
+                    )
                 )
-            )
-
-        return citations
+            return citations
 
     @staticmethod
     def _text(node: ET.Element | None) -> str:
@@ -80,6 +90,7 @@ class PubMedClient:
             last_name = self._text(author.find("LastName"))
             initials = self._text(author.find("Initials"))
             collective = self._text(author.find("CollectiveName"))
+            
             if collective:
                 names.append(collective)
             elif last_name:
