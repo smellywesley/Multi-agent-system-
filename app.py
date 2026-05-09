@@ -35,16 +35,27 @@ if st.button("Run Research", type="primary"):
     if not question.strip():
         st.warning("Please enter a research question before running.")
     else:
-        workflow = ReviewWorkflow()
-        with st.status("Starting workflow...", expanded=True) as status:
-            st.write("Orchestrating...")
-            st.write("Searching PubMed/Semantic Scholar...")
-            st.write("Extracting Clinical Data...")
-            st.write("Synthesizing Report...")
-            result = workflow.run(task=question)
-            status.update(label="Research complete", state="complete")
-
-        st.subheader("Clinical Synthesis Report")
+            workflow = ReviewWorkflow()
+            with st.status("Starting workflow...", expanded=True) as status:
+                st.write("Orchestrating...")
+                st.write("Searching PubMed/Semantic Scholar...")
+                st.write("Extracting Clinical Data...")
+                st.write("Synthesizing Report...")
+                
+                # --- NEW SECURITY WRAPPER ---
+                try:
+                    result = workflow.run(task=question)
+                    status.update(label="Research complete", state="complete")
+                except Exception as e:
+                    # 1. Update the UI gracefully
+                    status.update(label="Workflow failed", state="error")
+                    st.error("An internal system error occurred. Please try again later.")
+                    
+                    # 2. Print the real error safely to your Render logs out of public view
+                    print(f"CRITICAL BACKEND ERROR: {str(e)}")
+                    
+                    # 3. Stop the page so it doesn't try to render an empty report
+                    st.stop()
         if result.synthesis:
             synthesis = result.synthesis
             st.markdown(
