@@ -6,11 +6,17 @@ from google.genai import types
 import openai
 
 class LLMClient:
-    def __init__(self):
-        self.gemini_key = os.environ.get("GEMINI_API_KEY")
-        self.sambanova_key = os.environ.get("SAMBANOVA_API_KEY")
+    def __init__(self, settings=None, **kwargs):
+        """
+        Initialize LLM Client. 
+        Accepts 'settings' for framework compatibility, but falls back 
+        to environment variables for standalone use.
+        """
+        # Pull keys from settings object if it exists, otherwise check environment
+        self.gemini_key = getattr(settings, "GEMINI_API_KEY", None) or os.environ.get("GEMINI_API_KEY")
+        self.sambanova_key = getattr(settings, "SAMBANOVA_API_KEY", None) or os.environ.get("SAMBANOVA_API_KEY")
         
-        # Use the stable 1.5-flash model which has a high free quota
+        # Standardize on the high-quota stable model
         self.gemini_model = "gemini-1.5-flash-latest"
         
         self.genai_client = genai.Client(api_key=self.gemini_key) if self.gemini_key else None
@@ -22,7 +28,6 @@ class LLMClient:
     def generate_structured(self, prompt: str, schema: Type[BaseModel]) -> Any:
         """Generate structured output with SambaNova or Gemini fallback."""
         try:
-            # Attempt SambaNova first
             if self.samba_client:
                 response = self.samba_client.chat.completions.create(
                     model="Meta-Llama-3.1-405B-Instruct",
@@ -31,11 +36,10 @@ class LLMClient:
                 )
                 return schema.model_validate_json(response.choices[0].message.content)
         except Exception as e:
-            print(f"SambaNova error, falling back to Gemini: {str(e)}")
+            print(f"SambaNova primary failed, falling back to Gemini: {str(e)}")
 
-        # Fallback to Gemini 1.5 (The stable model)
         if not self.genai_client:
-            raise ValueError("No LLM clients available (Check API Keys)")
+            raise ValueError("LLM Clients uninitialized. Please provide GEMINI_API_KEY.")
             
         response = self.genai_client.models.generate_content(
             model=self.gemini_model,
