@@ -15,4 +15,13 @@ RUN python -m pip install --no-cache-dir --upgrade pip && \
 
 USER app
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "10000"]
+# ... (Keep whatever is above this)
+
+# 1. Make sure your actual code is copied into the container
+COPY app.py ./
+
+# 2. Force install the web server packages
+RUN pip install fastapi uvicorn
+
+# 3. Use python -m to completely bypass any PATH issues
+CMD ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "10000"]
