@@ -54,26 +54,21 @@ question = st.text_area(
     height=150
 )
 
-# --- THE MISSING BUTTON & LOGIC ---
 if st.button("INITIATE NEURAL RESEARCH", type="primary"):
     if not question.strip():
         st.warning("SYSTEM ERROR: Query input required.")
     else:
-        workflow = ReviewWorkflow()
-        with st.status("🧬 INITIATING MULTI-AGENT PROTOCOL...", expanded=True) as status:
-            st.write("--- Orchestrating Central Intelligence...")
-            st.write("--- Scanning Global Literature (PubMed/Scholar)...")
-            st.write("--- Extracting Neural Clinical Data...")
-            st.write("--- Synthesizing Evidence Matrix...")
-            
-            try:
+        # MOVE IT HERE - Inside the protected block
+        try:
+            workflow = ReviewWorkflow() 
+            with st.status("🧬 INITIATING MULTI-AGENT PROTOCOL...", expanded=True) as status:
+                # ... rest of your workflow logic ...
                 result = workflow.run(task=question)
                 status.update(label="ANALYSIS COMPLETE", state="complete")
-            except Exception as e:
-                status.update(label="PROTOCOL CRITICAL FAILURE", state="error")
-                st.error("INTERNAL ERROR: See system logs for details.")
-                print(f"CRITICAL BACKEND ERROR: {str(e)}")
-                st.stop()
+        except Exception as e:
+            st.error("AN INTERNAL SYSTEM ERROR OCCURRED. THE CORE IS SECURE.")
+            print(f"DEBUG LOG: {str(e)}") # This stays in Render, not on the web.
+            st.stop()
         
         # --- DISPLAY RESULTS ---
         if result and hasattr(result, 'synthesis') and result.synthesis:
