@@ -1,34 +1,26 @@
-"""Streamlit portal for biomedical research workflow."""
-
-import json
-
 import streamlit as st
+import json
+import sys
+from pathlib import Path
 
-from multi_agent_system.config import get_settings
+# Ensure local modules are discoverable
+sys.path.append(str(Path(__file__).parent / "src"))
+
 from multi_agent_system.workflows.review_workflow import ReviewWorkflow
 
 st.set_page_config(page_title="Biomedical Research Intelligence", layout="wide")
 
-settings = get_settings()
-
-st.title("Biomedical Research Intelligence")
+st.title("🔬 Biomedical Research Intelligence")
+st.markdown("### Agentic Systematic Review & Meta-Analysis System")
 
 with st.sidebar:
-    st.header("System Status")
-    st.caption(f"Current provider: `{settings.llm_provider}`")
-    sambanova_ok = settings.sambanova_api_key not in {"", "replace_me"}
-    gemini_ok = settings.gemini_api_key not in {"", "replace_me"}
-    st.success("SambaNova (Primary): Ready" if sambanova_ok else "SambaNova (Primary): Missing key")
-    st.success("Gemini (Failover): Ready" if gemini_ok else "Gemini (Failover): Missing key")
-    st.info("PHI warning: do not submit identifiable patient data.")
+    st.header("Settings")
+    st.info("System is using SambaNova (Llama 3.1 405B) with Gemini 2.0 Flash fallback.")
 
 question = st.text_area(
-    "Biomedical Research Question",
-    height=180,
-    placeholder=(
-        "e.g., In adults with treatment-resistant depression, does ketamine "
-        "improve remission compared with placebo?"
-    ),
+    "Enter your clinical research question:",
+    placeholder="e.g., Is GLP-1 receptor agonist therapy effective for neuroprotection in Parkinson's disease?",
+    height=150
 )
 
 if st.button("Run Research", type="primary"):
@@ -37,54 +29,45 @@ if st.button("Run Research", type="primary"):
     else:
         workflow = ReviewWorkflow()
         with st.status("Starting workflow...", expanded=True) as status:
-            st.write("Orchestrating...")
-            st.write("Searching PubMed/Semantic Scholar...")
-            st.write("Extracting Clinical Data...")
-            st.write("Synthesizing Report...")
+            st.write("Orchestrating agents...")
+            st.write("Searching PubMed & Semantic Scholar...")
+            st.write("Extracting clinical data points...")
+            st.write("Synthesizing final report...")
             
-            # --- SECURITY WRAPPER ---
             try:
                 result = workflow.run(task=question)
-                status.update(label="Research complete", state="complete")
+                status.update(label="Research complete!", state="complete")
             except Exception as e:
                 status.update(label="Workflow failed", state="error")
                 st.error("An internal system error occurred. Please try again later.")
                 print(f"CRITICAL BACKEND ERROR: {str(e)}")
                 st.stop()
         
-        # --- DISPLAY RESULTS ---
-        if result.synthesis:
-            st.subheader("Synthesis")
+        if result and hasattr(result, 'synthesis') and result.synthesis:
+            st.subheader("Clinical Synthesis")
+            st.markdown(f"**Clinical Consensus:** {result.synthesis.clinical_consensus}")
+            st.markdown(f"**Evidence Quality:** {result.synthesis.overall_evidence_quality}")
+            st.markdown(f"**Recommendation:** {result.synthesis.clinical_recommendation}")
             
-            st.markdown(
-                "\n".join(
-                    [
-                        "## Clinical Synthesis Report",
-                        f"**Clinical consensus:** {result.synthesis.clinical_consensus}",
-                        f"**Overall evidence quality:** {result.synthesis.overall_evidence_quality}",
-                        "**Conflicting findings:**",
-                        *[f"- {item}" for item in (result.synthesis.conflicting_findings or ["None reported"])],
-                        f"**Clinical recommendation:** {result.synthesis.clinical_recommendation}",
-                    ]
-                )
-            )
+            with st.expander("Conflicting Findings"):
+                if result.synthesis.conflicting_findings:
+                    for finding in result.synthesis.conflicting_findings:
+                        st.write(f"- {finding}")
+                else:
+                    st.write("No major conflicting findings reported.")
         else:
-            st.markdown(result.content)
+            st.markdown(getattr(result, 'content', "No synthesis generated."))
 
         with st.expander("Source Citations"):
-            if result.citations:
-                for citation in result.citations:
-                    st.markdown(f"- **{citation.title}**\nDOI: `{citation.doi or 'N/A'}` | Source: `{citation.source}`")
+            if hasattr(result, 'citations') and result.citations:
+                for cit in result.citations:
+                    st.markdown(f"- **{cit.title}** ({cit.source})")
             else:
-                st.write("No citations returned.")
+                st.write("No citations available.")
 
-        with st.expander("Raw Clinical Extractions"):
-            st.code(json.dumps([item.model_dump() for item in result.extractions], indent=2))
-
-        report_text = result.content
         st.download_button(
-            "Download Report",
-            data=report_text,
-            file_name="clinical_synthesis_report.md",
-            mime="text/markdown",
+            "Download Full Report",
+            data=str(result),
+            file_name="research_report.md",
+            mime="text/markdown"
         )
