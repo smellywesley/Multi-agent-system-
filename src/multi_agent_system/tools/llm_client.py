@@ -7,18 +7,16 @@ from google.genai import types
 import openai
 
 class LLMClient:
-    # THE KEY FIX: Added 'settings=None' and '**kwargs' to accept any arguments
     def __init__(self, settings=None, **kwargs):
         """
         Gold Standard 2026 Client.
-        Compatible with Orchestrator settings and Render environment variables.
         """
-        # Resolve keys from settings OR environment
+        # Resolve keys
         self.gemini_key = getattr(settings, "GEMINI_API_KEY", None) or os.environ.get("GEMINI_API_KEY")
         self.sambanova_key = getattr(settings, "SAMBANOVA_API_KEY", None) or os.environ.get("SAMBANOVA_API_KEY")
         
-        # 2026 STABLE MODELS
-        self.gemini_model = "gemini-1.5-flash" 
+        # ⚡ 2026 STABLE MODELS (These replace the retired 1.5/2.0 series)
+        self.gemini_model = "gemini-2.0-flash" 
         self.samba_model = "Meta-Llama-3.3-70B-Instruct"
         
         self.genai_client = genai.Client(api_key=self.gemini_key) if self.gemini_key else None
@@ -28,7 +26,7 @@ class LLMClient:
         ) if self.sambanova_key else None
 
     def generate_structured(self, prompt: str, schema: Type[BaseModel]) -> Any:
-        # Attempt SambaNova
+        # Try SambaNova first
         try:
             if self.samba_client:
                 response = self.samba_client.chat.completions.create(
@@ -41,16 +39,28 @@ class LLMClient:
             print(f"SambaNova busy, falling back: {str(e)}")
             time.sleep(1)
 
-        # Fallback to Gemini
+        # Fallback to Gemini 2.0
         if not self.genai_client:
-            raise ValueError("No AI providers available. Check Render Env Keys.")
+            raise ValueError("API Keys missing in Render Environment.")
             
-        response = self.genai_client.models.generate_content(
-            model=self.gemini_model,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=schema,
-            ),
-        )
-        return response.parsed
+        try:
+            response = self.genai_client.models.generate_content(
+                model=self.gemini_model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=schema,
+                ),
+            )
+            return response.parsed
+        except Exception as e:
+            # If 2.0 Flash fails, try the generic 'gemini-flash' alias as a last resort
+            response = self.genai_client.models.generate_content(
+                model="gemini-2.0-flash", 
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=schema,
+                ),
+            )
+            return response.parsed
