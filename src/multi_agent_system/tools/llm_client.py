@@ -15,8 +15,11 @@ class LLMClient:
         self.gemini_key = getattr(settings, "GEMINI_API_KEY", None) or os.environ.get("GEMINI_API_KEY")
         self.sambanova_key = getattr(settings, "SAMBANOVA_API_KEY", None) or os.environ.get("SAMBANOVA_API_KEY")
         
-        # 2. Use the CORRECT model string for the Google GenAI SDK
+        # 2. Use stable identifiers for 2026
+        # Gemini 1.5 Flash is the high-quota workhorse
         self.gemini_model = "gemini-1.5-flash"
+        # Llama 3.3 70B is the current SambaNova stable replacement for 405B
+        self.samba_model = "Meta-Llama-3.3-70B-Instruct"
         
         # 3. Initialize Clients
         self.genai_client = genai.Client(api_key=self.gemini_key) if self.gemini_key else None
@@ -27,17 +30,17 @@ class LLMClient:
 
     def generate_structured(self, prompt: str, schema: Type[BaseModel]) -> Any:
         """Professional LLM handler with SambaNova primary and Gemini fallback."""
-        # Try SambaNova (Llama 3.1 405B) first
+        # Try SambaNova first
         try:
             if self.samba_client:
                 response = self.samba_client.chat.completions.create(
-                    model="Meta-Llama-3.1-405B-Instruct",
+                    model=self.samba_model,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.1
                 )
                 return schema.model_validate_json(response.choices[0].message.content)
         except Exception as e:
-            print(f"SambaNova limit/error, falling back to Gemini: {str(e)}")
+            print(f"SambaNova primary failed, falling back to Gemini: {str(e)}")
 
         # Fallback to Gemini 1.5 Flash
         if not self.genai_client:
@@ -54,4 +57,5 @@ class LLMClient:
             )
             return response.parsed
         except Exception as e:
-            raise RuntimeError(f"All LLM providers failed. Last error: {str(e)}")
+            # Final security capture to prevent public tracebacks
+            raise RuntimeError(f"All AI providers failed. Check API limits/keys. Error: {str(e)}")
