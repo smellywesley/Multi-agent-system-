@@ -21,5 +21,8 @@ COPY app.py ./
 USER root
 RUN pip install --no-cache-dir fastapi uvicorn
 
-# 3. Use python -m to completely bypass any PATH issues
+# 2. Force Python to print errors instantly so we aren't blind
+ENV PYTHONUNBUFFERED=1
+
+# 3. Start the server
 CMD ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "10000"]
