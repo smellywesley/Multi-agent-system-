@@ -1,91 +1,48 @@
-"""Multi-provider LLM client (Gemini, SambaNova, Ollama)."""
-
-from typing import Any, TypeVar, cast
-
+import os
+from typing import Any, Optional, Type
+from pydantic import BaseModel
 from google import genai
 from google.genai import types
-from openai import InternalServerError, OpenAI, RateLimitError
-from pydantic import BaseModel
-
-from multi_agent_system.config import Settings
-
-TModel = TypeVar("TModel", bound=BaseModel)
-
+import openai
 
 class LLMClient:
-    """Switchboard client for Gemini and OpenAI-compatible providers."""
+    def __init__(self):
+        self.gemini_key = os.environ.get("GEMINI_API_KEY")
+        self.sambanova_key = os.environ.get("SAMBANOVA_API_KEY")
+        
+        # Use the stable 1.5-flash model which has a high free quota
+        self.gemini_model = "gemini-1.5-flash-latest"
+        
+        self.genai_client = genai.Client(api_key=self.gemini_key) if self.gemini_key else None
+        self.samba_client = openai.OpenAI(
+            api_key=self.sambanova_key,
+            base_url="https://api.sambanova.ai/v1",
+        ) if self.sambanova_key else None
 
-    def __init__(self, settings: Settings) -> None:
-        self.settings = settings
-        self.model = settings.llm_model
-        self.provider = settings.llm_provider.strip().lower()
-
-        if self.provider == "gemini":
-            self.gemini_client: genai.Client | None = genai.Client(api_key=settings.gemini_api_key)
-            self.openai_client: OpenAI | None = None
-        elif self.provider == "sambanova":
-            self.gemini_client = None
-            self.openai_client = OpenAI(
-                api_key=settings.sambanova_api_key,
-                base_url=settings.openai_base_url,
-            )
-        elif self.provider == "ollama":
-            self.gemini_client = None
-            self.openai_client = OpenAI(
-                api_key="ollama",
-                base_url="http://localhost:11434/v1",
-            )
-        else:
-            raise ValueError(f"Unsupported LLM_PROVIDER: {settings.llm_provider}")
-
-    def generate_structured(self, prompt: str, schema: type[TModel]) -> TModel:
-        """Generate and parse structured output into the provided Pydantic schema."""
-        if self.provider == "gemini":
-            if self.gemini_client is None:
-                raise ValueError("Gemini client was not initialized")
-            response = self.gemini_client.models.generate_content(
-                model=self.model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=schema,
-                ),
-            )
-            parsed = response.parsed
-            if parsed is None:
-                raise ValueError("Gemini returned no parsed structured response")
-            return cast(TModel, parsed)
-
-        if self.openai_client is None:
-            raise ValueError("OpenAI-compatible client was not initialized")
-
+    def generate_structured(self, prompt: str, schema: Type[BaseModel]) -> Any:
+        """Generate structured output with SambaNova or Gemini fallback."""
         try:
-            completion = self.openai_client.beta.chat.completions.parse(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                response_format=schema,
-            )
-            message: Any = completion.choices[0].message
-            parsed = message.parsed
-            if parsed is None:
-                raise ValueError("Provider returned no parsed structured response")
-            return cast(TModel, parsed)
-        except (RateLimitError, InternalServerError):
-            if self.provider != "sambanova":
-                raise
-            print("SambaNova rate limit hit, falling back to Gemini...")
-            fallback_client = genai.Client(api_key=self.settings.gemini_api_key)
-            response = fallback_client.models.generate_content(
-                model="gemini-1.5-flash-latest",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=schema,
-                ),
-            )
-            parsed = response.parsed
-            if parsed is None:
-                raise ValueError(
-                    "Gemini fallback returned no parsed structured response",
-                ) from None
-            return cast(TModel, parsed)
+            # Attempt SambaNova first
+            if self.samba_client:
+                response = self.samba_client.chat.completions.create(
+                    model="Meta-Llama-3.1-405B-Instruct",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.1
+                )
+                return schema.model_validate_json(response.choices[0].message.content)
+        except Exception as e:
+            print(f"SambaNova error, falling back to Gemini: {str(e)}")
+
+        # Fallback to Gemini 1.5 (The stable model)
+        if not self.genai_client:
+            raise ValueError("No LLM clients available (Check API Keys)")
+            
+        response = self.genai_client.models.generate_content(
+            model=self.gemini_model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=schema,
+            ),
+        )
+        return response.parsed
