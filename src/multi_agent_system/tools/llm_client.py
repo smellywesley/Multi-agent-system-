@@ -76,7 +76,7 @@ class LLMClient:
             print("SambaNova rate limit hit, falling back to Gemini...")
             fallback_client = genai.Client(api_key=self.settings.gemini_api_key)
             response = fallback_client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-1.5-flash-latest",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
