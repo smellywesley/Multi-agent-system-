@@ -23,7 +23,7 @@ st.markdown("""
     .stButton>button { background-color: #00ffcc; color: black; border-radius: 5px; font-weight: bold; width: 100%; }
     .stTextInput>div>div>input { color: #00ffcc; }
     </style>
-    """, unsafe_allow_stdio=True)
+    """, unsafe_allow_html=True)
 
 st.title("🧬 NEURAL CLINICAL INTELLIGENCE")
 st.caption("MAY 2026 RELEASE // MULTI-AGENT SYSTEM [STABLE V4.2]")
