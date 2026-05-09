@@ -35,41 +35,36 @@ if st.button("Run Research", type="primary"):
     if not question.strip():
         st.warning("Please enter a research question before running.")
     else:
-            workflow = ReviewWorkflow()
-            with st.status("Starting workflow...", expanded=True) as status:
-                st.write("Orchestrating...")
-                st.write("Searching PubMed/Semantic Scholar...")
-                st.write("Extracting Clinical Data...")
-                st.write("Synthesizing Report...")
-                
-                # --- NEW SECURITY WRAPPER ---
-                try:
-                    result = workflow.run(task=question)
-                    status.update(label="Research complete", state="complete")
-                except Exception as e:
-                    # 1. Update the UI gracefully
-                    status.update(label="Workflow failed", state="error")
-                    st.error("An internal system error occurred. Please try again later.")
-                    
-                    # 2. Print the real error safely to your Render logs out of public view
-                    print(f"CRITICAL BACKEND ERROR: {str(e)}")
-                    
-                    # 3. Stop the page so it doesn't try to render an empty report
-                    st.stop()
+        workflow = ReviewWorkflow()
+        with st.status("Starting workflow...", expanded=True) as status:
+            st.write("Orchestrating...")
+            st.write("Searching PubMed/Semantic Scholar...")
+            st.write("Extracting Clinical Data...")
+            st.write("Synthesizing Report...")
+            
+            # --- SECURITY WRAPPER ---
+            try:
+                result = workflow.run(task=question)
+                status.update(label="Research complete", state="complete")
+            except Exception as e:
+                status.update(label="Workflow failed", state="error")
+                st.error("An internal system error occurred. Please try again later.")
+                print(f"CRITICAL BACKEND ERROR: {str(e)}")
+                st.stop()
+        
+        # --- DISPLAY RESULTS ---
         if result.synthesis:
-            synthesis = result.synthesis
+            st.subheader("Synthesis")
+            
             st.markdown(
                 "\n".join(
                     [
                         "## Clinical Synthesis Report",
-                        f"**Clinical consensus:** {synthesis.clinical_consensus}",
-                        f"**Overall evidence quality:** {synthesis.overall_evidence_quality}",
+                        f"**Clinical consensus:** {result.synthesis.clinical_consensus}",
+                        f"**Overall evidence quality:** {result.synthesis.overall_evidence_quality}",
                         "**Conflicting findings:**",
-                        *[
-                            f"- {item}"
-                            for item in (synthesis.conflicting_findings or ["None reported"])
-                        ],
-                        f"**Clinical recommendation:** {synthesis.clinical_recommendation}",
+                        *[f"- {item}" for item in (result.synthesis.conflicting_findings or ["None reported"])],
+                        f"**Clinical recommendation:** {result.synthesis.clinical_recommendation}",
                     ]
                 )
             )
@@ -79,10 +74,7 @@ if st.button("Run Research", type="primary"):
         with st.expander("Source Citations"):
             if result.citations:
                 for citation in result.citations:
-                    st.markdown(
-                        f"- **{citation.title}**  \\n"
-                        f"DOI: `{citation.doi or 'N/A'}` | Source: `{citation.source}`"
-                    )
+                    st.markdown(f"- **{citation.title}**\nDOI: `{citation.doi or 'N/A'}` | Source: `{citation.source}`")
             else:
                 st.write("No citations returned.")
 
