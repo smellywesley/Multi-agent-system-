@@ -5,7 +5,7 @@ from typing import Any, Type
 from pydantic import BaseModel
 import openai
 
-# Prevents multiple agents from overlapping
+# Global lock to force agents into a single-file line
 api_lock = threading.Lock()
 
 class LLMClient:
@@ -13,7 +13,7 @@ class LLMClient:
         self.groq_key = os.environ.get("GROQ_API_KEY")
         self.samba_key = os.environ.get("SAMBANOVA_API_KEY")
         
-        # 2026 Stable Models
+        # 2026 Optimized Models
         self.primary_model = "llama-3.3-70b-versatile"
         self.backup_model = "Meta-Llama-3.3-70B-Instruct"
         
@@ -22,10 +22,10 @@ class LLMClient:
 
     def generate_structured(self, prompt: str, schema: Type[BaseModel]) -> Any:
         with api_lock:
-            # We try 5 times to give the free-tier time to reset
-            for attempt in range(5):  
+            # Increased to 6 attempts to survive the 'cancer' query volume
+            for attempt in range(6):  
                 try:
-                    # Attempt 1: Groq
+                    # Attempt 1: Groq (Primary)
                     if self.groq_client:
                         response = self.groq_client.chat.completions.create(
                             model=self.primary_model,
@@ -34,16 +34,19 @@ class LLMClient:
                             temperature=0.1
                         )
                         result = schema.model_validate_json(response.choices[0].message.content)
-                        # MANDATORY THROTTLE: Wait 3s after success to protect RPM
-                        time.sleep(3) 
+                        # CRITICAL: 6-second cooldown after every successful extraction
+                        # This keeps us under the 10 Requests Per Minute (RPM) limit
+                        time.sleep(6) 
                         return result
                 except Exception as e:
                     if "429" in str(e):
-                        time.sleep(6 + attempt * 2) # Wait longer if blocked
+                        wait_time = 10 + (attempt * 5)
+                        print(f"Rate Limit! Cooling down for {wait_time}s...")
+                        time.sleep(wait_time)
                     else:
-                        print(f"Groq error: {str(e)}")
-                
-                # Attempt 2: SambaNova Fallback
+                        print(f"Groq Error: {str(e)}")
+
+                # Attempt 2: SambaNova (Backup)
                 try:
                     if self.samba_client:
                         response = self.samba_client.chat.completions.create(
@@ -52,12 +55,12 @@ class LLMClient:
                             temperature=0.1
                         )
                         result = schema.model_validate_json(response.choices[0].message.content)
-                        time.sleep(3) # Throttle
+                        time.sleep(6)
                         return result
                 except Exception as e:
                     if "429" in str(e):
-                        time.sleep(6)
+                        time.sleep(10)
                     else:
-                        print(f"SambaNova error: {str(e)}")
+                        print(f"SambaNova Error: {str(e)}")
             
-            raise RuntimeError("CRITICAL: Rate limits exceeded on all providers. System cooling down.")
+            raise RuntimeError("CORE ERROR: API providers exhausted. The 'cancer' query is too large for free tier. Try a more specific sub-topic.")
