@@ -39,12 +39,11 @@ st.caption("MAY 2026 RELEASE // MULTI-AGENT SYSTEM [STABLE V4.2]")
 
 with st.sidebar:
     st.header("⚡ CORE STATUS")
-    st.success("SAMBANOVA: Llama 3.3 70B [ACTIVE]")
-    st.success("GOOGLE AI: Gemini 3 Flash [READY]")
+    st.success("GROQ: Llama 3.3 70B [PRIMARY]")
+    st.success("SAMBANOVA: Llama 3.3 [BACKUP]")
     st.divider()
-    st.markdown("### SYSTEM SPECS")
-    st.info("- Reasoning: DeepSeek-V3.2 Engine\n- Context Window: 128K\n- Latency: < 200ms")
-    st.divider()
+    st.markdown("### 2026 OPEN-SOURCE STACK")
+    st.info("- Latency: < 150ms\n- Architecture: Llama-3-Pure\n- Gemini: DISABLED (RETIRED)")
     st.warning("EXPERIMENTAL: Medical research use only.")
 
 # --- RESEARCH INPUT ---
