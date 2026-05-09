@@ -25,4 +25,4 @@ RUN pip install --no-cache-dir fastapi uvicorn
 ENV PYTHONUNBUFFERED=1
 
 # 3. Start the server
-CMD ["python", "-m", "uvicorn", "src.multi_agent_system.api:app", "--host", "0.0.0.0", "--port", "10000"]
+CMD ["python", "-m", "uvicorn", "api:app", "--host", "0.0.0.0", "--port", "10000"]
