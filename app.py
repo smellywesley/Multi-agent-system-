@@ -21,15 +21,16 @@ st.markdown("""
 st.title("🧬 NEURAL CLINICAL INTELLIGENCE")
 st.caption("MAY 2026 RELEASE // GROQ-POWERED STACK")
 
-with st.status("🧬 INITIATING MULTI-AGENT PROTOCOL...", expanded=True) as status:
-    st.write("--- Orchestrating Central Intelligence...")
-    st.write("--- Scanning Global Literature (PubMed/Scholar)...")
-    st.write("--- Extracting Data (Applying Rate-Limit Throttling)...") # Added this
-            
-    result = workflow.run(task=question)
+with st.sidebar:
+    st.header("⚡ CORE STATUS")
+    st.success("GROQ: Llama 3.3 70B [PRIMARY]")
+    st.success("SAMBANOVA: Llama 3.3 [BACKUP]")
+    st.info("GEMINI: DISABLED (RETIRED)")
 
+# 1. First, we define the input
 question = st.text_area("INPUT RESEARCH QUERY:", placeholder="Enter clinical question...", height=150)
 
+# 2. Then, we only run the workflow IF the button is clicked
 if st.button("INITIATE NEURAL RESEARCH", type="primary"):
     if not question.strip():
         st.warning("SYSTEM ERROR: Query input required.")
@@ -39,7 +40,7 @@ if st.button("INITIATE NEURAL RESEARCH", type="primary"):
             with st.status("🧬 INITIATING MULTI-AGENT PROTOCOL...", expanded=True) as status:
                 st.write("--- Orchestrating Central Intelligence...")
                 st.write("--- Scanning Global Literature (PubMed/Scholar)...")
-                st.write("--- Extracting Neural Clinical Data...")
+                st.write("--- Extracting Neural Clinical Data (Throttling Active)...")
                 
                 result = workflow.run(task=question)
                 status.update(label="ANALYSIS COMPLETE", state="complete")
@@ -51,6 +52,5 @@ if st.button("INITIATE NEURAL RESEARCH", type="primary"):
             else:
                 st.markdown(getattr(result, 'content', "No synthesis data available."))
         except Exception as e:
-            # THIS IS THE KEY: We show the actual error message here to troubleshoot
             st.error(f"CORE FAILURE: {str(e)}")
             st.stop()
