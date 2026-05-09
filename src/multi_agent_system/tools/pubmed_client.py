@@ -14,9 +14,9 @@ class PubMedClient:
     base_url: str = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
     timeout_seconds: float = 20.0
 
-    def search(self, query: str, max_results: int = 3) -> list[Citation]:
+    def search(self, query: str, max_results: int = 5) -> list[Citation]:
         # FREE TIER PROTECTOR: Hard cap at 3 papers to prevent API Rate Limits
-        safe_max = min(max_results, 3)
+        safe_max = min(max_results, 5)
         pmids = self._esearch(query=query, max_results=safe_max)
         if not pmids:
             return []
