@@ -15,7 +15,7 @@ RUN python -m pip install --no-cache-dir --upgrade pip && \
 
 USER app
 # 1. Make sure your actual code is copied into the container
-COPY app.py ./
+COPY api.py ./
 
 # Give admin rights to install the packages without cache
 USER root
