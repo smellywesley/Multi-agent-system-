@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Any, Optional, Type
 from pydantic import BaseModel
 from google import genai
@@ -6,12 +7,18 @@ from google.genai import types
 import openai
 
 class LLMClient:
-    def __init__(self):
-        self.gemini_key = os.environ.get("GEMINI_API_KEY")
-        self.sambanova_key = os.environ.get("SAMBANOVA_API_KEY")
+    def __init__(self, settings=None, **kwargs):
+        """
+        Unified Initialization. Handles 'settings' from Orchestrator 
+        while remaining backwards compatible with environment variables.
+        """
+        # Resolve keys from settings object OR environment
+        self.gemini_key = getattr(settings, "GEMINI_API_KEY", None) or os.environ.get("GEMINI_API_KEY")
+        self.sambanova_key = getattr(settings, "SAMBANOVA_API_KEY", None) or os.environ.get("SAMBANOVA_API_KEY")
         
-        # Use the stable 1.5-flash model which has a high free quota
-        self.gemini_model = "gemini-1.5-flash-latest"
+        # 2026 Stable Models
+        self.gemini_model = "gemini-3-flash"
+        self.samba_model = "Meta-Llama-3.3-70B-Instruct"
         
         self.genai_client = genai.Client(api_key=self.gemini_key) if self.gemini_key else None
         self.samba_client = openai.OpenAI(
@@ -20,22 +27,20 @@ class LLMClient:
         ) if self.sambanova_key else None
 
     def generate_structured(self, prompt: str, schema: Type[BaseModel]) -> Any:
-        """Generate structured output with SambaNova or Gemini fallback."""
         try:
-            # Attempt SambaNova first
             if self.samba_client:
                 response = self.samba_client.chat.completions.create(
-                    model="Meta-Llama-3.1-405B-Instruct",
+                    model=self.samba_model,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.1
                 )
                 return schema.model_validate_json(response.choices[0].message.content)
         except Exception as e:
-            print(f"SambaNova error, falling back to Gemini: {str(e)}")
+            print(f"SambaNova error: {str(e)}")
+            time.sleep(1)
 
-        # Fallback to Gemini 1.5 (The stable model)
         if not self.genai_client:
-            raise ValueError("No LLM clients available (Check API Keys)")
+            raise ValueError("API Keys missing in Render Environment.")
             
         response = self.genai_client.models.generate_content(
             model=self.gemini_model,
