@@ -33,5 +33,6 @@ def api_research(request: ResearchRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    # Hugging Face MUST run on port 7860
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    import os
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
