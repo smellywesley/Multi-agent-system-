@@ -7,17 +7,18 @@ from google.genai import types
 import openai
 
 class LLMClient:
+    # THE KEY FIX: Added 'settings=None' and '**kwargs' to accept any arguments
     def __init__(self, settings=None, **kwargs):
         """
-        Unified Initialization. Handles 'settings' from Orchestrator 
-        while remaining backwards compatible with environment variables.
+        Gold Standard 2026 Client.
+        Compatible with Orchestrator settings and Render environment variables.
         """
-        # Resolve keys from settings object OR environment
+        # Resolve keys from settings OR environment
         self.gemini_key = getattr(settings, "GEMINI_API_KEY", None) or os.environ.get("GEMINI_API_KEY")
         self.sambanova_key = getattr(settings, "SAMBANOVA_API_KEY", None) or os.environ.get("SAMBANOVA_API_KEY")
         
-        # 2026 Stable Models
-        self.gemini_model = "gemini-3-flash"
+        # 2026 STABLE MODELS
+        self.gemini_model = "gemini-1.5-flash" 
         self.samba_model = "Meta-Llama-3.3-70B-Instruct"
         
         self.genai_client = genai.Client(api_key=self.gemini_key) if self.gemini_key else None
@@ -27,6 +28,7 @@ class LLMClient:
         ) if self.sambanova_key else None
 
     def generate_structured(self, prompt: str, schema: Type[BaseModel]) -> Any:
+        # Attempt SambaNova
         try:
             if self.samba_client:
                 response = self.samba_client.chat.completions.create(
@@ -36,11 +38,12 @@ class LLMClient:
                 )
                 return schema.model_validate_json(response.choices[0].message.content)
         except Exception as e:
-            print(f"SambaNova error: {str(e)}")
+            print(f"SambaNova busy, falling back: {str(e)}")
             time.sleep(1)
 
+        # Fallback to Gemini
         if not self.genai_client:
-            raise ValueError("API Keys missing in Render Environment.")
+            raise ValueError("No AI providers available. Check Render Env Keys.")
             
         response = self.genai_client.models.generate_content(
             model=self.gemini_model,
