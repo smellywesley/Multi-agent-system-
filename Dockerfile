@@ -15,5 +15,4 @@ RUN python -m pip install --no-cache-dir --upgrade pip && \
 
 USER app
 
-ENTRYPOINT ["multi-agent-system"]
-CMD ["--help"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "10000"]
