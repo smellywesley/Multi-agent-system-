@@ -19,13 +19,14 @@ class LLMClient:
         self.samba_client = openai.OpenAI(api_key=self.samba_key, base_url="https://api.sambanova.ai/v1") if self.samba_key else None
 
     def generate_structured(self, prompt: str, schema: Type[BaseModel]) -> Any:
-        # THE SCHEMA ENFORCER: Mathematically force the 8B model to use the right keys
-        required_keys = list(schema.model_fields.keys())
+        import json # Ensure this is available
+        
+        # THE ULTIMATE SCHEMA ENFORCER: Generate the complete nested blueprint
+        schema_blueprint = json.dumps(schema.model_json_schema(), indent=2)
         
         prompt += "\n\n--- CRITICAL SYSTEM INSTRUCTION ---"
         prompt += "\nYou MUST respond in strict JSON format."
-        prompt += f"\nDo NOT wrap your response in parent keys like 'PICO', 'data', or 'response'."
-        prompt += f"\nYour JSON object MUST contain EXACTLY these root keys and nothing else: {required_keys}"
+        prompt += f"\nYour JSON response MUST STRICTLY follow this exact JSON schema blueprint. Pay close attention to nested objects, arrays, and required fields:\n{schema_blueprint}"
 
         error_log = []
 
@@ -76,9 +77,5 @@ class LLMClient:
                 else:
                     error_log.append("Samba: Client missing API Key.")
 
-            final_errors = " | ".join(error_log[-2:]) 
-            raise RuntimeError(f"DIAGNOSTIC HALT. Reasons -> {final_errors}")
-
-            # BRUTAL HONESTY PRINT: Show the exact reasons BOTH engines failed
             final_errors = " | ".join(error_log[-2:]) 
             raise RuntimeError(f"DIAGNOSTIC HALT. Reasons -> {final_errors}")
