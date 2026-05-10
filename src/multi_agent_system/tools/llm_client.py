@@ -63,4 +63,4 @@ class LLMClient:
                     else:
                         print(f"SambaNova Error: {str(e)}")
             
-            raise RuntimeError("CORE ERROR: API providers exhausted. The 'cancer' query is too large for free tier. Try a more specific sub-topic.")
+            raise RuntimeError("CORE ERROR: Rate limits exceeded on all AI providers. The current query triggered a burst limit on the free tier. Please wait 60 seconds.")
