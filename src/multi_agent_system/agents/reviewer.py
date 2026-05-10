@@ -26,7 +26,11 @@ class ReviewerAgent(BaseAgent):
             f"Extractions JSON:\n{json.dumps(serialized_extractions, indent=2)}"
         )
 
-        synthesis = self.llm_client.generate_structured(prompt=prompt, schema=SynthesisReport)
+        synthesis = self.llm_client.generate_structured(
+            prompt=prompt,
+            schema=SynthesisReport,
+            use_heavy_model=True  # <--- THIS ACTIVATES THE 70B BRAIN
+        )
 
         content = self._to_markdown_summary(synthesis)
         return AgentMessage(
