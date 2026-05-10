@@ -29,33 +29,30 @@ class ReviewWorkflow(BaseWorkflow):
             recipient=self.orchestrator.name,
             content=task
         )
-        # THE FIX: Changed .process() to .handle()
         orch_result = self.orchestrator.handle(init_msg)
         if not orch_result.metadata.get("pico_query"):
             raise ValueError(f"Orchestrator Failed: {orch_result.content}")
 
         # 2. RESEARCH
-        # THE FIX: Changed .process() to .handle()
         research_result = self.researcher.handle(orch_result)
         if not research_result.citations:
             raise ValueError(f"Researcher Failed: {research_result.content}")
 
         # 3. SCREENING
-        # THE FIX: Changed .process() to .handle()
         screen_result = self.screener.handle(research_result)
         if not screen_result.citations:
             raise ValueError(f"Screener Failed (Or Rejected All Papers): {screen_result.content}")
 
         # 4. EXTRACTION
-        # THE FIX: Changed .process() to .handle()
         extraction_result = self.extractor.handle(screen_result)
         if not extraction_result.extractions:
             raise ValueError(f"Extractor Failed: {extraction_result.content}")
 
         # 5. SYNTHESIS
         final_result = self.reviewer.handle(extraction_result)
-        if not final_result.synthesis:
-            # THE FIX: Correcting the error string name
+        
+        # THE FIX: Unbreakable string check instead of a fragile Pydantic object check
+        if final_result.content != "Synthesis complete.":
             raise ValueError(f"Reviewer Failed: {final_result.content}")
 
         return final_result
