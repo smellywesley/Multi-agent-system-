@@ -64,6 +64,8 @@ class LLMClient:
         prompt += "\n1. Do NOT include any technical schema definitions or 'properties'. Just the data."
         prompt += "\n2. Do NOT wrap plain string fields in arrays []."
         prompt += "\n3. Maintain the EXACT nested structure shown in the Example Structure. Do not flatten the data."
+        # THE FIX: The Anti-Laziness Protocol
+        prompt += "\n4. ANTI-LAZINESS PROTOCOL: You MUST extract and output the data. Do NOT return empty arrays like []. If multiple papers are provided, you must output an array item for EVERY single paper."
 
         error_log = []
         primary = "llama-3.3-70b-versatile" if use_heavy_model else self.groq_model
