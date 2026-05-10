@@ -21,18 +21,19 @@ class ResearcherAgent(BaseAgent):
         self.logger = logging.getLogger(self.name)
 
     def handle(self, message: AgentMessage) -> AgentMessage:
-        # Pull the ACTUAL pubmed_query string from the metadata
-        pico_query = message.metadata.get("pico_query", {})
-        search_query = pico_query.get("pubmed_query") if isinstance(pico_query, dict) else message.content
+        # Check metadata first, then fallback to message content
+        pico_data = message.metadata.get("pico_query", {})
+        search_query = pico_data.get("pubmed_query") if isinstance(pico_data, dict) else None
         
-        # Fallback if metadata is missing or malformed
-        if not search_query:
+        if not search_query or len(search_query) < 5:
             search_query = message.content
 
         self.logger.info(f"Researcher execution: Searching for '{search_query}'")
         
         # Execute search
-        pubmed = self.pubmed_client.search(query=search_query, max_results=20)
+        pubmed_results = self.pubmed_client.search(query=search_query, max_results=20)
+        
+        # ... (rest of your search logic)
         
         try:
             semantic_scholar = self.semantic_scholar_client.search(
