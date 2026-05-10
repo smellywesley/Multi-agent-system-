@@ -9,8 +9,7 @@ from multi_agent_system.workflows.review_workflow import ReviewWorkflow
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="Clinical Intelligence", page_icon="", layout="wide")
 
-# --- APPLE PRO STYLING ---
-# Everything between the """ quotes is protected CSS, so Python won't crash on it
+# --- APPLE PRO STYLING & 3D DNA HELIX ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
@@ -31,6 +30,57 @@ st.markdown("""
         0% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
         100% { background-position: 0% 50%; }
+    }
+
+    /* THE REVOLVING 3D DNA */
+    .dna-container {
+        position: fixed;
+        right: 8%;
+        top: 50%;
+        transform: translateY(-50%) scale(1.3);
+        height: 500px;
+        width: 120px;
+        z-index: 0;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        perspective: 1000px;
+    }
+    .base-pair {
+        position: relative;
+        width: 100%;
+        height: 2px;
+        transform-style: preserve-3d;
+        animation: spinDNA 4s linear infinite;
+    }
+    .dot {
+        position: absolute;
+        top: -4px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+    .dot.left { left: 0; background: #2997ff; box-shadow: 0 0 15px #2997ff; }
+    .dot.right { right: 0; background: #a1a1a6; box-shadow: 0 0 15px #a1a1a6; }
+    .line {
+        position: absolute;
+        top: 0;
+        left: 5px;
+        right: 5px;
+        height: 2px;
+        background: rgba(255, 255, 255, 0.15);
+    }
+    @keyframes spinDNA {
+        0% { transform: rotateY(0deg); }
+        100% { transform: rotateY(360deg); }
+    }
+
+    /* MAIN UI WRAPPER TO KEEP CONTENT LEFT */
+    .content-wrapper {
+        position: relative;
+        z-index: 1;
+        max-width: 75%;
     }
 
     [data-testid="stHeader"] {
@@ -132,8 +182,23 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- PREMIUM HEADER ---
-# Removed the "Powered by Groq" subtitle to keep it minimal
+# 1. INJECT THE CSS 3D DNA (Generates 25 base pairs using Python)
+dna_html = '<div class="dna-container">'
+for i in range(25):
+    delay = i * -0.15 # Staggers the animation to create the helix shape
+    dna_html += f'''
+    <div class="base-pair" style="animation-delay: {delay}s;">
+        <div class="line" style="animation-delay: {delay}s;"></div>
+        <div class="dot left" style="animation-delay: {delay}s;"></div>
+        <div class="dot right" style="animation-delay: {delay}s;"></div>
+    </div>
+    '''
+dna_html += '</div>'
+st.markdown(dna_html, unsafe_allow_html=True)
+
+# 2. WRAP ALL CONTENT SO IT STAYS ON THE LEFT, AWAY FROM THE DNA
+st.markdown('<div class="content-wrapper">', unsafe_allow_html=True)
+
 st.markdown('<div class="apple-title">Clinical Intelligence.</div>', unsafe_allow_html=True)
 
 with st.sidebar:
@@ -157,17 +222,24 @@ if st.button("Initiate Research Protocol"):
                 result = workflow.run(task=question)
                 status.update(label="Synthesis Complete", state="complete")
             
-            # --- FULL DASHBOARD VISUALIZATION ---
             if result:
                 st.divider()
                 st.header("Executive Summary")
                 
-                if hasattr(result, 'content') and result.content:
-                    st.markdown(result.content)
+                # FIXED: The ugly "result.content" markdown printout has been entirely deleted.
+                # We now ONLY use the structured Synthesis Report.
                 
                 if hasattr(result, 'synthesis') and result.synthesis:
-                    st.markdown(f"### Consensus\n{result.synthesis.clinical_consensus}")
-                    st.markdown(f"### Recommendation\n{result.synthesis.clinical_recommendation}")
+                    st.markdown(f"### The Consensus\n{result.synthesis.clinical_consensus}")
+                    st.markdown(f"### The Recommendation\n{result.synthesis.clinical_recommendation}")
+                    
+                    if hasattr(result.synthesis, 'overall_evidence_quality'):
+                        st.markdown(f"**Evidence Quality:** {result.synthesis.overall_evidence_quality}")
+                        
+                    if hasattr(result.synthesis, 'conflicting_findings') and result.synthesis.conflicting_findings:
+                        st.markdown("**Contradictory Evidence:**")
+                        for conflict in result.synthesis.conflicting_findings:
+                            st.markdown(f"- {conflict}")
                 
                 if hasattr(result, 'extractions') and result.extractions:
                     st.divider()
@@ -192,17 +264,15 @@ if st.button("Initiate Research Protocol"):
                         pubmed_url = f"https://pubmed.ncbi.nlm.nih.gov/{ext.pmid}/"
                         doi_display = ext.doi if ext.doi else "Not provided"
 
-                        # Cleaned-up minimalist evidence cards
                         with st.expander(f"📄 {study_design} (PMID: {ext.pmid})"):
                             st.markdown(f"**🔗 Source:** [View on PubMed]({pubmed_url}) | **DOI:** {doi_display}")
-                            st.markdown(f"**📝 Summary of Findings:** {data.get('key_findings', 'N/A')}")
+                            st.markdown(f"**📝 The Bottom Line:** {data.get('key_findings', 'N/A')}")
 
-                        # Dossier compiler
                         dossier_text += f"Paper PMID: {ext.pmid}\n"
                         dossier_text += f"URL: {pubmed_url}\n"
                         dossier_text += f"DOI: {doi_display}\n"
                         dossier_text += f"Study Design: {study_design}\n"
-                        dossier_text += f"Summary of Findings: {data.get('key_findings', 'N/A')}\n"
+                        dossier_text += f"The Bottom Line: {data.get('key_findings', 'N/A')}\n"
                         dossier_text += "\n" + "-"*30 + "\n\n"
 
                     st.divider()
@@ -219,3 +289,6 @@ if st.button("Initiate Research Protocol"):
         except Exception as e:
             st.error(f"System Halt: {str(e)}")
             st.stop()
+
+# CLose the wrapper div
+st.markdown('</div>', unsafe_allow_html=True)
