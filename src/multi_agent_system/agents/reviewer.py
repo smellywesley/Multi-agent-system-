@@ -1,5 +1,6 @@
 """Reviewer Agent for synthesizing clinical data."""
 
+import logging  # THE FIX: Import the logging library
 from .base import BaseAgent
 from ..schemas.messages import AgentMessage, SynthesisReport
 from ..tools.llm_client import LLMClient
@@ -10,6 +11,7 @@ class ReviewerAgent(BaseAgent):
     def __init__(self, name="Reviewer"):
         super().__init__(name=name)
         self.llm_client = LLMClient()
+        self.logger = logging.getLogger(self.name)  # THE FIX: Initialize the logger
 
     def handle(self, message: AgentMessage) -> AgentMessage:
         self.logger.info("Synthesizing clinical evidence...")
@@ -34,7 +36,6 @@ class ReviewerAgent(BaseAgent):
         """
 
         try:
-            # THE FIX: Force the 70B model to output the strict SynthesisReport JSON
             synthesis_obj = self.llm_client.generate_structured(
                 prompt=prompt,
                 schema=SynthesisReport,
@@ -47,7 +48,7 @@ class ReviewerAgent(BaseAgent):
                 content="Synthesis complete.",
                 citations=message.citations,
                 extractions=message.extractions,
-                synthesis=synthesis_obj, # PACKAGED CORRECTLY!
+                synthesis=synthesis_obj, 
                 metadata=message.metadata
             )
         except Exception as e:
