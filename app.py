@@ -76,11 +76,12 @@ st.markdown("""
         100% { transform: rotateY(360deg); }
     }
 
-    /* MAIN UI WRAPPER TO KEEP CONTENT LEFT */
-    .content-wrapper {
-        position: relative;
+    /* SAFE STREAMLIT NATIVE WRAPPER - Replaces the broken HTML wrapper */
+    [data-testid="block-container"] {
+        max-width: 75% !important;
+        padding-left: 5% !important;
+        padding-right: 5% !important;
         z-index: 1;
-        max-width: 75%;
     }
 
     [data-testid="stHeader"] {
@@ -92,20 +93,23 @@ st.markdown("""
 
     footer {visibility: hidden;}
 
+    /* INPUT BOX FIX - Ensuring it stays visible and clickable */
     .stTextArea textarea {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
         border-radius: 16px;
-        color: #f5f5f7;
+        color: #f5f5f7 !important;
         font-size: 16px;
         padding: 16px;
         transition: all 0.3s ease;
         backdrop-filter: blur(10px);
+        z-index: 10;
+        position: relative;
     }
     .stTextArea textarea:focus {
-        border-color: #2997ff;
-        box-shadow: 0 0 0 4px rgba(41, 151, 255, 0.15);
-        background: rgba(255, 255, 255, 0.08);
+        border-color: #2997ff !important;
+        box-shadow: 0 0 0 4px rgba(41, 151, 255, 0.15) !important;
+        background: rgba(255, 255, 255, 0.1) !important;
     }
 
     .stButton>button {
@@ -119,6 +123,8 @@ st.markdown("""
         transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
         width: 100%;
         backdrop-filter: blur(10px);
+        z-index: 10;
+        position: relative;
     }
     .stButton>button:hover {
         transform: scale(1.02);
@@ -178,34 +184,30 @@ st.markdown("""
         -webkit-text-fill-color: transparent;
         margin-bottom: 40px;
         padding-top: 20px;
+        text-align: center;
+        width: 100%;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# 1. INJECT THE CSS 3D DNA (Generates 25 base pairs using Python)
+# 1. INJECT THE CSS 3D DNA 
 dna_html = '<div class="dna-container">'
 for i in range(25):
-    delay = i * -0.15 # Staggers the animation to create the helix shape
-    dna_html += f'''
-    <div class="base-pair" style="animation-delay: {delay}s;">
-        <div class="line" style="animation-delay: {delay}s;"></div>
-        <div class="dot left" style="animation-delay: {delay}s;"></div>
-        <div class="dot right" style="animation-delay: {delay}s;"></div>
-    </div>
-    '''
+    delay = i * -0.15
+    dna_html += f'<div class="base-pair" style="animation-delay: {delay}s;"><div class="line" style="animation-delay: {delay}s;"></div><div class="dot left" style="animation-delay: {delay}s;"></div><div class="dot right" style="animation-delay: {delay}s;"></div></div>'
 dna_html += '</div>'
 st.markdown(dna_html, unsafe_allow_html=True)
 
-# 2. WRAP ALL CONTENT SO IT STAYS ON THE LEFT, AWAY FROM THE DNA
-st.markdown('<div class="content-wrapper">', unsafe_allow_html=True)
+# 2. NO MORE RAW HTML WRAPPERS (Deleted the broken content-wrapper div entirely)
 
-st.markdown('<div class="apple-title">Clinical Intelligence.</div>', unsafe_allow_html=True)
+st.markdown('<div class="apple-title">Clinical Intelligence</div>', unsafe_allow_html=True)
 
 with st.sidebar:
     st.markdown("### Architecture Status")
     st.success("Primary Engine: Groq 8B")
     st.info("Failover Engine: SambaNova 70B")
 
+# The Text Box is now safely rendered by Streamlit natively
 question = st.text_area("", placeholder="Enter a clinical research question...", height=120)
 
 if st.button("Initiate Research Protocol"):
@@ -225,9 +227,6 @@ if st.button("Initiate Research Protocol"):
             if result:
                 st.divider()
                 st.header("Executive Summary")
-                
-                # FIXED: The ugly "result.content" markdown printout has been entirely deleted.
-                # We now ONLY use the structured Synthesis Report.
                 
                 if hasattr(result, 'synthesis') and result.synthesis:
                     st.markdown(f"### The Consensus\n{result.synthesis.clinical_consensus}")
@@ -289,6 +288,3 @@ if st.button("Initiate Research Protocol"):
         except Exception as e:
             st.error(f"System Halt: {str(e)}")
             st.stop()
-
-# CLose the wrapper div
-st.markdown('</div>', unsafe_allow_html=True)
