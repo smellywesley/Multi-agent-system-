@@ -32,10 +32,11 @@ class OrchestratorAgent(BaseAgent):
                 use_heavy_model=False
             )
             
+            # THE FIX: Put the actual query in the 'content' so the Researcher finds it immediately
             return AgentMessage(
                 sender=self.name,
                 recipient=message.sender,
-                content="PICO query successfully generated.",
+                content=pico_obj.pubmed_query, # <--- SEND THE QUERY, NOT A SUCCESS MESSAGE
                 metadata={"pico_query": pico_obj.model_dump()}
             )
         except Exception as e:
