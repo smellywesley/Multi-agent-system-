@@ -49,29 +49,76 @@ if st.button("INITIATE NEURAL RESEARCH", type="primary"):
             if result:
                 st.header("🔬 CLINICAL SYNTHESIS")
                 
-                # 1. Show the detailed meta-analysis text (Usually stored in the message content)
+                # 1. The Meta-Analysis
                 if hasattr(result, 'content') and result.content:
                     st.markdown(result.content)
                 
-                # 2. Show the structured bottom-line
+                # 2. The Structured Bottom-Line
                 if hasattr(result, 'synthesis') and result.synthesis:
                     st.markdown(f"### CONSENSUS\n{result.synthesis.clinical_consensus}")
                     st.markdown(f"### RECOMMENDATION\n{result.synthesis.clinical_recommendation}")
                 
-                # 3. Add drop-downs to prove the agents actually read the papers
+                # 3. ACADEMIC EVIDENCE CARDS & DOWNLOAD COMPILER
                 if hasattr(result, 'extractions') and result.extractions:
                     st.divider()
                     st.header("📚 EXTRACTED CLINICAL EVIDENCE")
-                    st.caption("Raw data extracted by the Extractor Agent")
+                    
+                    # Initialize the downloadable text dossier
+                    dossier_text = "NEURAL CLINICAL INTELLIGENCE: RESEARCH DOSSIER\n"
+                    dossier_text += "="*50 + "\n\n"
+                    if hasattr(result, 'synthesis') and result.synthesis:
+                        dossier_text += f"CONSENSUS:\n{result.synthesis.clinical_consensus}\n\n"
+                        dossier_text += f"RECOMMENDATION:\n{result.synthesis.clinical_recommendation}\n\n"
+                    dossier_text += "EVIDENCE BREAKDOWN:\n"
+                    dossier_text += "-"*50 + "\n\n"
                     
                     for ext in result.extractions:
-                        # Create a clickable dropdown for every paper
-                        with st.expander(f"📄 Paper PMID: {ext.pmid}"):
-                            # Dump the raw JSON so you can see study designs, sample sizes, etc.
-                            if hasattr(ext, 'extraction'):
-                                st.json(ext.extraction.model_dump() if hasattr(ext.extraction, 'model_dump') else ext.extraction)
+                        # Safely parse the extraction data
+                        data = ext.extraction
+                        if hasattr(data, 'model_dump'):
+                            data = data.model_dump()
+                        elif not isinstance(data, dict):
+                            data = {} # Fallback if parsing fails
+
+                        study_design = data.get('study_design', 'N/A')
+                        pubmed_url = f"https://pubmed.ncbi.nlm.nih.gov/{ext.pmid}/"
+                        doi_display = ext.doi if ext.doi else "Not provided"
+
+                        # Build the Professional UI Card
+                        with st.expander(f"📄 {study_design} (PMID: {ext.pmid})"):
+                            st.markdown(f"**🔗 Source:** [View on PubMed]({pubmed_url}) | **DOI:** {doi_display}")
+                            st.markdown(f"**👥 Sample Size:** {data.get('sample_size', 'N/A')}")
+                            st.markdown(f"**💡 Key Findings:** {data.get('key_findings', 'N/A')}")
+                            st.markdown(f"**⚠️ Limitations:** {data.get('limitations', 'N/A')}")
+                            
+                            bias = data.get('risk_of_bias_flags', [])
+                            if bias:
+                                st.markdown(f"**🚩 Risk of Bias:** {', '.join(bias)}")
+
+                        # Add this paper to the downloadable dossier
+                        dossier_text += f"Paper PMID: {ext.pmid}\n"
+                        dossier_text += f"URL: {pubmed_url}\n"
+                        dossier_text += f"DOI: {doi_display}\n"
+                        dossier_text += f"Study Design: {study_design}\n"
+                        dossier_text += f"Sample Size: {data.get('sample_size', 'N/A')}\n"
+                        dossier_text += f"Key Findings: {data.get('key_findings', 'N/A')}\n"
+                        dossier_text += f"Limitations: {data.get('limitations', 'N/A')}\n"
+                        if bias:
+                            dossier_text += f"Risk of Bias: {', '.join(bias)}\n"
+                        dossier_text += "\n" + "-"*30 + "\n\n"
+
+                    st.divider()
+                    # 4. THE DOWNLOAD BUTTON
+                    st.download_button(
+                        label="📥 DOWNLOAD CLINICAL DOSSIER (TXT)",
+                        data=dossier_text,
+                        file_name="clinical_research_dossier.txt",
+                        mime="text/plain",
+                        use_container_width=True
+                    )
             else:
                 st.error("No data returned from the multi-agent workflow.")
+                
         except Exception as e:
             st.error(f"CORE FAILURE: {str(e)}")
             st.stop()
