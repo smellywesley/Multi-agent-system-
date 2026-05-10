@@ -242,12 +242,27 @@ if st.button("Initiate Research Protocol"):
                 
                 if hasattr(result, 'extractions') and result.extractions:
                     st.divider()
-                    st.header("Extracted Evidence Matrix")
-                
-                if hasattr(result, 'extractions') and result.extractions:
-                    st.divider()
-                    st.header("Clinical Evidence Base")
                     
+                    # PRISMA TRACKING METRICS
+                    st.header("PRISMA Screening & Evidence Matrix")
+                    
+                    # Calculate PRISMA stats if available
+                    if hasattr(result, 'metadata') and 'screening_decisions' in result.metadata:
+                        decisions = result.metadata['screening_decisions']
+                        total_screened = len(decisions)
+                        total_included = len([d for d in decisions if d['decision'].upper() == "INCLUDE"])
+                        total_excluded = total_screened - total_included
+                        
+                        col1, col2, col3 = st.columns(3)
+                        col1.metric("Papers Screened", total_screened)
+                        col2.metric("Excluded (Failed Criteria)", total_excluded)
+                        col3.metric("Included in Synthesis", total_included)
+                    
+                    # BUILD THE QUANTITATIVE DATA TABLE
+                    st.markdown("### Extracted Quantitative Data")
+                    
+                    # Prepare data for a clean table layout
+                    table_data = []
                     dossier_text = "CLINICAL INTELLIGENCE: RESEARCH DOSSIER\n"
                     dossier_text += "="*50 + "\n\n"
                     if hasattr(result, 'synthesis') and result.synthesis:
@@ -263,26 +278,47 @@ if st.button("Initiate Research Protocol"):
                         elif not isinstance(data, dict):
                             data = {} 
 
-                        study_design = data.get('study_design', 'Unknown Design')
+                        study_design = data.get('study_design', 'Unknown')
+                        n_size = data.get('sample_size', 'N/A')
+                        stats = data.get('statistical_endpoint', 'N/A')
+                        findings = data.get('key_findings', 'N/A')
                         pubmed_url = f"https://pubmed.ncbi.nlm.nih.gov/{ext.pmid}/"
-                        doi_display = ext.doi if ext.doi else "Not provided"
 
-                        with st.expander(f"📄 {study_design} (PMID: {ext.pmid})"):
-                            st.markdown(f"**🔗 Source:** [View on PubMed]({pubmed_url}) | **DOI:** {doi_display}")
-                            st.markdown(f"**📝 The Bottom Line:** {data.get('key_findings', 'N/A')}")
+                        # Append row for the UI table
+                        table_data.append({
+                            "PMID": ext.pmid,
+                            "Design": study_design,
+                            "N-Size": n_size,
+                            "Statistical Endpoint": stats,
+                            "Findings": findings
+                        })
 
-                        dossier_text += f"Paper PMID: {ext.pmid}\n"
-                        dossier_text += f"URL: {pubmed_url}\n"
-                        dossier_text += f"DOI: {doi_display}\n"
-                        dossier_text += f"Study Design: {study_design}\n"
-                        dossier_text += f"The Bottom Line: {data.get('key_findings', 'N/A')}\n"
-                        dossier_text += "\n" + "-"*30 + "\n\n"
+                        # Compile text for the downloadable dossier
+                        dossier_text += f"PMID: {ext.pmid}\n"
+                        dossier_text += f"Design: {study_design} (N={n_size})\n"
+                        dossier_text += f"Statistics: {stats}\n"
+                        dossier_text += f"Bottom Line: {findings}\n"
+                        dossier_text += "-"*30 + "\n\n"
+
+                    # Render the DataFrame natively in Streamlit
+                    st.dataframe(
+                        table_data, 
+                        column_config={
+                            "PMID": st.column_config.TextColumn("PMID", width="small"),
+                            "Design": st.column_config.TextColumn("Design", width="medium"),
+                            "N-Size": st.column_config.TextColumn("N-Size", width="small"),
+                            "Statistical Endpoint": st.column_config.TextColumn("Statistics", width="large"),
+                            "Findings": st.column_config.TextColumn("Key Findings", width="large"),
+                        },
+                        hide_index=True,
+                        use_container_width=True
+                    )
 
                     st.divider()
                     st.download_button(
-                        label="Download Clinical Dossier",
+                        label="Download Full PRISMA Dossier",
                         data=dossier_text,
-                        file_name="clinical_research_dossier.txt",
+                        file_name="prisma_clinical_dossier.txt",
                         mime="text/plain",
                         use_container_width=True
                     )
@@ -292,3 +328,6 @@ if st.button("Initiate Research Protocol"):
         except Exception as e:
             st.error(f"System Halt: {str(e)}")
             st.stop()
+
+# Close the wrapper div safely
+st.markdown('</div>', unsafe_allow_html=True)
