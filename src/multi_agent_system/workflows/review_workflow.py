@@ -53,9 +53,9 @@ class ReviewWorkflow(BaseWorkflow):
             raise ValueError(f"Extractor Failed: {extraction_result.content}")
 
         # 5. SYNTHESIS
-        # THE FIX: Changed .process() to .handle()
         final_result = self.reviewer.handle(extraction_result)
         if not final_result.synthesis:
+            # THE FIX: Correcting the error string name
             raise ValueError(f"Reviewer Failed: {final_result.content}")
 
         return final_result
