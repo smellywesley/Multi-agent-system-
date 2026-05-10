@@ -19,10 +19,14 @@ class LLMClient:
         self.samba_client = openai.OpenAI(api_key=self.samba_key, base_url="https://api.sambanova.ai/v1") if self.samba_key else None
 
     def generate_structured(self, prompt: str, schema: Type[BaseModel]) -> Any:
-        if "json" not in prompt.lower():
-            prompt += "\n\nYou MUST respond in strict JSON format."
+        # THE SCHEMA ENFORCER: Mathematically force the 8B model to use the right keys
+        required_keys = list(schema.model_fields.keys())
+        
+        prompt += "\n\n--- CRITICAL SYSTEM INSTRUCTION ---"
+        prompt += "\nYou MUST respond in strict JSON format."
+        prompt += f"\nDo NOT wrap your response in parent keys like 'PICO', 'data', or 'response'."
+        prompt += f"\nYour JSON object MUST contain EXACTLY these root keys and nothing else: {required_keys}"
 
-        # THE BLACK BOX: Track every failure so nothing is hidden
         error_log = []
 
         with api_lock:
@@ -41,12 +45,12 @@ class LLMClient:
                             content = content.replace("```json", "").replace("```", "").strip()
                             
                         result = schema.model_validate_json(content)
-                        time.sleep(3) # Standard throttle
+                        time.sleep(3)
                         return result
                     except Exception as e:
                         error_log.append(f"Groq: {str(e)}")
                         if "429" in str(e):
-                            time.sleep(10) # HEAVY penalty cooldown for rate limits
+                            time.sleep(10)
                 else:
                     error_log.append("Groq: Client missing API Key.")
 
@@ -68,9 +72,12 @@ class LLMClient:
                     except Exception as e:
                         error_log.append(f"Samba: {str(e)}")
                         if "429" in str(e):
-                            time.sleep(10) # HEAVY penalty cooldown
+                            time.sleep(10)
                 else:
                     error_log.append("Samba: Client missing API Key.")
+
+            final_errors = " | ".join(error_log[-2:]) 
+            raise RuntimeError(f"DIAGNOSTIC HALT. Reasons -> {final_errors}")
 
             # BRUTAL HONESTY PRINT: Show the exact reasons BOTH engines failed
             final_errors = " | ".join(error_log[-2:]) 
