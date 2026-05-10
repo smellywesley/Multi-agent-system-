@@ -45,12 +45,30 @@ if st.button("INITIATE NEURAL RESEARCH", type="primary"):
                 result = workflow.run(task=question)
                 status.update(label="ANALYSIS COMPLETE", state="complete")
             
-            if result and hasattr(result, 'synthesis') and result.synthesis:
+           # --- FULL DASHBOARD VISUALIZATION ---
+            if result:
                 st.header("🔬 CLINICAL SYNTHESIS")
-                st.markdown(f"### CONSENSUS\n{result.synthesis.clinical_consensus}")
-                st.markdown(f"### RECOMMENDATION\n{result.synthesis.clinical_recommendation}")
+                
+                # 1. Show the detailed meta-analysis text (Usually stored in the message content)
+                if hasattr(result, 'content') and result.content:
+                    st.markdown(result.content)
+                
+                # 2. Show the structured bottom-line
+                if hasattr(result, 'synthesis') and result.synthesis:
+                    st.markdown(f"### CONSENSUS\n{result.synthesis.clinical_consensus}")
+                    st.markdown(f"### RECOMMENDATION\n{result.synthesis.clinical_recommendation}")
+                
+                # 3. Add drop-downs to prove the agents actually read the papers
+                if hasattr(result, 'extractions') and result.extractions:
+                    st.divider()
+                    st.header("📚 EXTRACTED CLINICAL EVIDENCE")
+                    st.caption("Raw data extracted by the Extractor Agent")
+                    
+                    for ext in result.extractions:
+                        # Create a clickable dropdown for every paper
+                        with st.expander(f"📄 Paper PMID: {ext.pmid}"):
+                            # Dump the raw JSON so you can see study designs, sample sizes, etc.
+                            if hasattr(ext, 'extraction'):
+                                st.json(ext.extraction.model_dump() if hasattr(ext.extraction, 'model_dump') else ext.extraction)
             else:
-                st.markdown(getattr(result, 'content', "No synthesis data available."))
-        except Exception as e:
-            st.error(f"CORE FAILURE: {str(e)}")
-            st.stop()
+                st.error("No data returned from the multi-agent workflow.")
