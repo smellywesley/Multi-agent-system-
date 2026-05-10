@@ -55,5 +55,5 @@ class PICOQuery(BaseModel):
     comparison: str | None = Field(default=None, description="The comparison group, if any.")
     outcome: str = Field(description="The clinical outcome being measured.")
     
-    # THE FIX: Ensuring the Orchestrator doesn't crash when asking for the search string
-    pubmed_query: str = Field(description="A highly optimized PubMed Boolean search string using MeSH terms and synonyms.")
+    # THE FIX: Force the AI to write a broad search that actually yields results
+    pubmed_query: str = Field(description="A BROAD and INCLUSIVE PubMed Boolean search string. ONLY combine the Population and Intervention using AND. DO NOT include the Outcome or Comparison in the search string, as this will result in 0 papers found.")
