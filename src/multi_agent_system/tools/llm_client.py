@@ -13,9 +13,11 @@ class LLMClient:
         self.groq_key = os.environ.get("GROQ_API_KEY")
         self.samba_key = os.environ.get("SAMBANOVA_API_KEY")
         
-        # 2026 Optimized Models
-        self.primary_model = "llama-3.3-70b-versatile"
-        self.backup_model = "Meta-Llama-3.3-70B-Instruct"
+       # BULLETPROOF FREE-TIER STACK
+        # Using 8B for massive token limits (fixes TPM crashes)
+        self.primary_model = "llama-3.1-8b-instant" 
+        # Using 70B only as a backup for complex reasoning
+        self.backup_model = "llama-3.3-70b-versatile"
         
         self.groq_client = openai.OpenAI(api_key=self.groq_key, base_url="https://api.groq.com/openai/v1") if self.groq_key else None
         self.samba_client = openai.OpenAI(api_key=self.samba_key, base_url="https://api.sambanova.ai/v1") if self.samba_key else None
