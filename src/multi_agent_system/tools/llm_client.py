@@ -12,7 +12,6 @@ class LLMClient:
         self.groq_key = os.environ.get("GROQ_API_KEY")
         self.samba_key = os.environ.get("SAMBANOVA_API_KEY")
         
-        # PROPER ROUTING: Give each API its exact correct model name
         self.groq_model = "llama-3.1-8b-instant" 
         self.samba_model = "Meta-Llama-3.3-70B-Instruct" 
         
@@ -23,15 +22,16 @@ class LLMClient:
         if "json" not in prompt.lower():
             prompt += "\n\nYou MUST respond in strict JSON format."
 
-        last_error = "Unknown Error"
+        # THE BLACK BOX: Track every failure so nothing is hidden
+        error_log = []
 
         with api_lock:
             for attempt in range(3):
-                try:
-                    # --- Attempt 1: Groq ---
-                    if self.groq_client:
+                # --- Attempt 1: Groq (Primary) ---
+                if self.groq_client:
+                    try:
                         response = self.groq_client.chat.completions.create(
-                            model=self.groq_model, # Using Groq's exact name
+                            model=self.groq_model,
                             messages=[{"role": "user", "content": prompt}],
                             response_format={"type": "json_object"},
                             temperature=0.1
@@ -41,18 +41,20 @@ class LLMClient:
                             content = content.replace("```json", "").replace("```", "").strip()
                             
                         result = schema.model_validate_json(content)
-                        time.sleep(3)
+                        time.sleep(3) # Standard throttle
                         return result
-                except Exception as e:
-                    last_error = f"Groq Error: {str(e)}"
-                    if "429" in str(e):
-                        time.sleep(5)
-                
-                # --- Attempt 2: SambaNova Backup ---
-                try:
-                    if self.samba_client:
+                    except Exception as e:
+                        error_log.append(f"Groq: {str(e)}")
+                        if "429" in str(e):
+                            time.sleep(10) # HEAVY penalty cooldown for rate limits
+                else:
+                    error_log.append("Groq: Client missing API Key.")
+
+                # --- Attempt 2: SambaNova (Backup) ---
+                if self.samba_client:
+                    try:
                         response = self.samba_client.chat.completions.create(
-                            model=self.samba_model, # Using SambaNova's exact name
+                            model=self.samba_model,
                             messages=[{"role": "user", "content": prompt}],
                             temperature=0.1
                         )
@@ -63,9 +65,13 @@ class LLMClient:
                         result = schema.model_validate_json(content)
                         time.sleep(3)
                         return result
-                except Exception as e:
-                    last_error = f"SambaNova Error: {str(e)}"
-                    if "429" in str(e):
-                        time.sleep(5)
+                    except Exception as e:
+                        error_log.append(f"Samba: {str(e)}")
+                        if "429" in str(e):
+                            time.sleep(10) # HEAVY penalty cooldown
+                else:
+                    error_log.append("Samba: Client missing API Key.")
 
-            raise RuntimeError(f"SYSTEM HALTED. {last_error}")
+            # BRUTAL HONESTY PRINT: Show the exact reasons BOTH engines failed
+            final_errors = " | ".join(error_log[-2:]) 
+            raise RuntimeError(f"DIAGNOSTIC HALT. Reasons -> {final_errors}")
