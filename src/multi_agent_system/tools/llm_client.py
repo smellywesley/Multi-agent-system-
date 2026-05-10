@@ -5,7 +5,6 @@ from typing import Any, Type
 from pydantic import BaseModel
 import openai
 
-# Global lock to force agents into a single-file line
 api_lock = threading.Lock()
 
 class LLMClient:
@@ -13,21 +12,24 @@ class LLMClient:
         self.groq_key = os.environ.get("GROQ_API_KEY")
         self.samba_key = os.environ.get("SAMBANOVA_API_KEY")
         
-       # BULLETPROOF FREE-TIER STACK
-        # Using 8B for massive token limits (fixes TPM crashes)
-        self.primary_model = "llama-3.1-8b-instant" 
-        # Using 70B only as a backup for complex reasoning
+        # 8B handles the massive context, 70B is backup
+        self.primary_model = "llama-3.1-8b-instant"
         self.backup_model = "llama-3.3-70b-versatile"
         
         self.groq_client = openai.OpenAI(api_key=self.groq_key, base_url="https://api.groq.com/openai/v1") if self.groq_key else None
         self.samba_client = openai.OpenAI(api_key=self.samba_key, base_url="https://api.sambanova.ai/v1") if self.samba_key else None
 
     def generate_structured(self, prompt: str, schema: Type[BaseModel]) -> Any:
+        # 1. GROQ FIX: Force the word JSON into the prompt to prevent 400 API crashes
+        if "json" not in prompt.lower():
+            prompt += "\n\nYou MUST respond in strict JSON format."
+
+        last_error = "Unknown Error"
+
         with api_lock:
-            # Increased to 6 attempts to survive the 'cancer' query volume
-            for attempt in range(6):  
+            for attempt in range(3):  # 3 attempts is plenty if it's actually working
                 try:
-                    # Attempt 1: Groq (Primary)
+                    # --- Attempt 1: Groq ---
                     if self.groq_client:
                         response = self.groq_client.chat.completions.create(
                             model=self.primary_model,
@@ -35,20 +37,20 @@ class LLMClient:
                             response_format={"type": "json_object"},
                             temperature=0.1
                         )
-                        result = schema.model_validate_json(response.choices[0].message.content)
-                        # CRITICAL: 6-second cooldown after every successful extraction
-                        # This keeps us under the 10 Requests Per Minute (RPM) limit
-                        time.sleep(6) 
+                        # 2. MARKDOWN FIX: Strip markdown so Pydantic doesn't crash
+                        content = response.choices[0].message.content
+                        if content.startswith("```json"):
+                            content = content.replace("```json", "").replace("```", "").strip()
+                            
+                        result = schema.model_validate_json(content)
+                        time.sleep(3) # Gentle 3s cooldown
                         return result
                 except Exception as e:
+                    last_error = f"Groq Error: {str(e)}"
                     if "429" in str(e):
-                        wait_time = 10 + (attempt * 5)
-                        print(f"Rate Limit! Cooling down for {wait_time}s...")
-                        time.sleep(wait_time)
-                    else:
-                        print(f"Groq Error: {str(e)}")
-
-                # Attempt 2: SambaNova (Backup)
+                        time.sleep(10)
+                
+                # --- Attempt 2: SambaNova Backup ---
                 try:
                     if self.samba_client:
                         response = self.samba_client.chat.completions.create(
@@ -56,13 +58,17 @@ class LLMClient:
                             messages=[{"role": "user", "content": prompt}],
                             temperature=0.1
                         )
-                        result = schema.model_validate_json(response.choices[0].message.content)
-                        time.sleep(6)
+                        content = response.choices[0].message.content
+                        if content.startswith("```json"):
+                            content = content.replace("```json", "").replace("```", "").strip()
+                            
+                        result = schema.model_validate_json(content)
+                        time.sleep(3)
                         return result
                 except Exception as e:
+                    last_error = f"SambaNova Error: {str(e)}"
                     if "429" in str(e):
                         time.sleep(10)
-                    else:
-                        print(f"SambaNova Error: {str(e)}")
-            
-            raise RuntimeError("CORE ERROR: Rate limits exceeded on all AI providers. The current query triggered a burst limit on the free tier. Please wait 60 seconds.")
+
+            # 3. BRUTAL HONESTY: Output the ACTUAL error so we can see what broke
+            raise RuntimeError(f"SYSTEM HALTED. {last_error}")
