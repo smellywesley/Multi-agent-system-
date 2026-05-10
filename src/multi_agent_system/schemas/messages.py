@@ -18,14 +18,15 @@ class Citation(BaseModel):
 
 class ClinicalExtraction(BaseModel):
     study_design: str = Field(description="The methodology used (e.g., Double-blind RCT).")
-    sample_size: str | int | None = Field(default=None, description="The number of patients.")
+    sample_size: str = Field(description="The exact total N-size of the study (e.g., 'N=540').")
     
-    # THE FIX: Aggressively force the AI to simplify the text into a bottom line
-    key_findings: str = Field(description="A brutally concise, 1-sentence 'bottom line' summary of the results. Translate dense academic jargon into plain English. NO statistics, NO raw data points. Just the core takeaway.")
+    # THE FIX: Forcing Quantitative Extraction for Meta-Analysis
+    statistical_endpoint: str = Field(description="The primary numerical endpoint data. You MUST extract the Hazard Ratio (HR), Odds Ratio (OR), Confidence Intervals (CI), and p-value if present. If no math is provided, write 'Quantitative data not reported'.")
     
+    key_findings: str = Field(description="A brutally concise, 1-sentence 'bottom line' summary of the results.")
     risk_of_bias_flags: list[str] = Field(default_factory=list)
     limitations: str = Field(description="A brief note on study limits.")
-
+    
 class ExtractionResult(BaseModel):
     """Extraction paired with paper identifiers."""
     doi: Optional[str] = None
