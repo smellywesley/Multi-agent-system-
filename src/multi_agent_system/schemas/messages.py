@@ -81,11 +81,11 @@ class PICOQuery(BaseModel):
     comparison: str | None = Field(default=None, description="The comparison group, if any.")
     outcome: str = Field(description="The clinical outcome being measured.")
     
-    # NEW: The PRISMA Guardrails
-    inclusion_criteria: str = Field(description="Strict rules for what MUST be in the paper (e.g., Human subjects, RCTs only).")
-    exclusion_criteria: str = Field(description="Strict rules for what gets a paper immediately rejected (e.g., In vitro, animal models, case reports).")
+    # THE FIX: Force the AI to output a flat string, completely banning dictionaries/nested JSON
+    inclusion_criteria: str = Field(description="A single flat string of text. DO NOT use nested JSON, dictionaries, or key-value pairs. State the rules for inclusion (e.g., 'Human subjects, RCTs only').")
+    exclusion_criteria: str = Field(description="A single flat string of text. DO NOT use nested JSON, dictionaries, or key-value pairs. State the rules for exclusion.")
+    
     pubmed_query: str = Field(description="A BROAD and INCLUSIVE PubMed Boolean search string. ONLY combine Population and Intervention using AND. Do NOT make it too restrictive.")
-
 # NEW: The Screening Blueprint
 class ScreeningDecision(BaseModel):
     pmid: str = Field(description="The PubMed ID of the paper.")
