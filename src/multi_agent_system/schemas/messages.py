@@ -46,8 +46,11 @@ class AgentMessage(BaseModel):
     extractions: List[ExtractionResult] = Field(default_factory=list)
     synthesis: Optional[SynthesisReport] = None
 
+from pydantic import BaseModel, Field
+
 class PICOQuery(BaseModel):
-    """PICO extraction plus generated PubMed boolean query."""
-    population: str
-    intervention: str
-    comparison: Optional[str] = None
+    population: str = Field(description="The patient population or problem.")
+    intervention: str = Field(description="The primary intervention or exposure.")
+    comparison: str | None = Field(default=None, description="The comparison group, if any.")
+    outcome: str = Field(description="The clinical outcome being measured.")
+    pubmed_query: str = Field(description="A highly optimized PubMed Boolean search string using MeSH terms and synonyms.")
