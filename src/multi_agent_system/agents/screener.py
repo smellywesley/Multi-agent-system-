@@ -12,7 +12,7 @@ class ScreenerAgent(BaseAgent):
         super().__init__(name=name)
         self.llm_client = LLMClient()
 
-    def process(self, message: AgentMessage) -> AgentMessage:
+    def handle(self, message: AgentMessage) -> AgentMessage:
         self.logger.info("Initializing PRISMA screening protocol...")
         
         citations = message.citations
