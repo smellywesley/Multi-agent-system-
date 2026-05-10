@@ -34,10 +34,11 @@ class ExtractionResult(BaseModel):
 
 class SynthesisReport(BaseModel):
     """Final weighted clinical synthesis across extracted studies."""
-    clinical_consensus: str = Field(description="A rigorous, high-density academic meta-synthesis of the provided literature. Focus exclusively on mechanistic pathways, statistical outcome trends, and primary endpoints. DO NOT use introductory filler like 'X has emerged as a powerful tool'. Write exactly like a principal investigator publishing a systematic review in The Lancet or NEJM. Use precise medical terminology.")
-    conflicting_findings: List[str] = Field(default_factory=list, description="Identify specific methodological, statistical, or cohort-based contradictions between the provided studies.")
-    overall_evidence_quality: str = Field(description="GRADE criteria assessment of the evidence (e.g., High, Moderate, Low) based strictly on study designs (e.g., RCTs vs. Observational) and extracted limitations.")
-    clinical_recommendation: str = Field(description="Translational directives for clinical practice or highly specific future trial designs. Must be actionable, technical, and strictly bound by the extracted evidence.")
+    clinical_consensus: str = Field(description="A rigorous, high-density academic meta-synthesis. Focus on mechanistic pathways and primary endpoints. NO FILLER. Write for a Lancet-level audience.")
+    conflicting_findings: List[str] = Field(default_factory=list, description="Identify methodological or statistical contradictions.")
+    overall_evidence_quality: str = Field(description="GRADE criteria assessment (e.g., High, Moderate, Low).")
+    clinical_recommendation: str = Field(description="Technical, actionable translational directives based strictly on the data.")
+
 class AgentMessage(BaseModel):
     """A message passed between agents."""
     sender: str
