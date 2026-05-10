@@ -226,19 +226,23 @@ if st.button("Initiate Research Protocol"):
             
             if result:
                 st.divider()
-                st.header("Executive Summary")
+                st.header("Systematic Meta-Synthesis")
                 
                 if hasattr(result, 'synthesis') and result.synthesis:
-                    st.markdown(f"### The Consensus\n{result.synthesis.clinical_consensus}")
-                    st.markdown(f"### The Recommendation\n{result.synthesis.clinical_recommendation}")
+                    st.markdown(f"### Mechanistic & Clinical Consensus\n{result.synthesis.clinical_consensus}")
+                    st.markdown(f"### Translational Directives\n{result.synthesis.clinical_recommendation}")
                     
                     if hasattr(result.synthesis, 'overall_evidence_quality'):
-                        st.markdown(f"**Evidence Quality:** {result.synthesis.overall_evidence_quality}")
+                        st.markdown(f"**GRADE Evidence Assessment:** {result.synthesis.overall_evidence_quality}")
                         
                     if hasattr(result.synthesis, 'conflicting_findings') and result.synthesis.conflicting_findings:
-                        st.markdown("**Contradictory Evidence:**")
+                        st.markdown("**Methodological & Statistical Contradictions:**")
                         for conflict in result.synthesis.conflicting_findings:
                             st.markdown(f"- {conflict}")
+                
+                if hasattr(result, 'extractions') and result.extractions:
+                    st.divider()
+                    st.header("Extracted Evidence Matrix")
                 
                 if hasattr(result, 'extractions') and result.extractions:
                     st.divider()
