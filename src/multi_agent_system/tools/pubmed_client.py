@@ -23,6 +23,9 @@ class PubMedClient:
         return self._efetch(pmids)
 
     def _esearch(self, query: str, max_results: int) -> list[str]:
+        # THE FIX: Clean the query of any internal quotes or leading/trailing whitespace
+        clean_query = query.replace('"', '').strip()
+        
         with httpx.Client(timeout=self.timeout_seconds) as client:
             response = client.get(
                 f"{self.base_url}/esearch.fcgi",
@@ -30,12 +33,10 @@ class PubMedClient:
                     "db": "pubmed",
                     "retmode": "json",
                     "retmax": max_results,
-                    "term": query
+                    "term": clean_query,
+                    "sort": "relevance" # THE FIX: Search by relevance, not just date!
                 },
             )
-            response.raise_for_status()
-            payload = response.json()
-            return payload.get("esearchresult", {}).get("idlist", [])
 
     def _efetch(self, pmids: list[str]) -> list[Citation]:
         with httpx.Client(timeout=self.timeout_seconds) as client:
