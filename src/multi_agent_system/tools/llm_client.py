@@ -22,22 +22,31 @@ class LLMClient:
     def generate_structured(self, prompt: str, schema: Type[BaseModel], use_heavy_model: bool = False) -> Any:
         import json 
         
-        # THE TYPE-AWARE ENFORCER: Detects Lists and forces the correct JSON format
+        # THE TYPE-AWARE ENFORCER: Detects Lists and builds the template
         fields = schema.model_fields
         template = {}
+        has_list = False
+        
         for key, field in fields.items():
-            # Check if the field is a list type (e.g., List[str])
-            is_list = hasattr(field.annotation, "__origin__") and field.annotation.__origin__ is list
+            # Robust list detection
+            is_list = "list" in str(field.annotation).lower()
             if is_list:
                 template[key] = [f"<{field.description}>"]
+                has_list = True
             else:
                 template[key] = f"<{field.description}>"
         
         prompt += "\n\n--- REQUIRED OUTPUT FORMAT ---"
         prompt += "\nYou MUST respond in strict JSON format."
         prompt += f"\nYour JSON object MUST contain exactly these keys: {list(fields.keys())}"
-        prompt += f"\nExample Structure: {json.dumps(template, indent=2)}"
-        prompt += "\n\nCRITICAL: Fields shown as arrays [...] MUST be returned as JSON arrays, even if empty or containing only one item."
+        prompt += f"\nExample Structure:\n{json.dumps(template, indent=2)}"
+        
+        # DYNAMIC GUARDRAILS: Only give the AI rules that apply to its current task
+        prompt += "\n\nCRITICAL INSTRUCTIONS:"
+        prompt += "\n1. Do NOT include any technical schema definitions or 'properties'. Just the data."
+        prompt += "\n2. Do NOT wrap plain string fields in arrays []."
+        if has_list:
+            prompt += "\n3. Fields shown as arrays [...] MUST be returned as JSON arrays, even if empty or containing only one item."
 
         error_log = []
         primary = "llama-3.3-70b-versatile" if use_heavy_model else self.groq_model
