@@ -72,3 +72,6 @@ if st.button("INITIATE NEURAL RESEARCH", type="primary"):
                                 st.json(ext.extraction.model_dump() if hasattr(ext.extraction, 'model_dump') else ext.extraction)
             else:
                 st.error("No data returned from the multi-agent workflow.")
+        except Exception as e:
+            st.error(f"CORE FAILURE: {str(e)}")
+            st.stop()
